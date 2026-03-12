@@ -11,6 +11,7 @@ import ChatPage from '@/pages/ChatPage';
 import DiseaseScannerPage from '@/pages/DiseaseScannerPage';
 import CommunityPage from '@/pages/CommunityPage';
 import ProfilePage from '@/pages/ProfilePage';
+import SuggestionsPage from '@/pages/SuggestionsPage';
 import '@/App.css';
 
 function ProtectedRoute({ children }) {
@@ -19,10 +20,10 @@ function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B1121] flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">Loading...</p>
+          <div className="w-10 h-10 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -51,6 +52,7 @@ function AppRouter() {
       <Route path="/weather" element={<ProtectedRoute><WeatherPage /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
       <Route path="/disease" element={<ProtectedRoute><DiseaseScannerPage /></ProtectedRoute>} />
+      <Route path="/suggestions" element={<ProtectedRoute><SuggestionsPage /></ProtectedRoute>} />
       <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -63,8 +65,8 @@ function PublicRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B1121] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -85,10 +87,11 @@ function App() {
           position="top-center"
           toastOptions={{
             style: {
-              background: '#12192B',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#FDFEFE',
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              color: '#111827',
               fontSize: '13px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
             }
           }}
         />

@@ -43,10 +43,10 @@ export default function AuthCallback() {
   }, [navigate, updateUser]);
 
   return (
-    <div className="min-h-screen bg-[#0B1121] flex items-center justify-center">
+    <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-slate-400 text-sm font-medium">Signing you in...</p>
+        <div className="w-10 h-10 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-gray-400 text-sm font-medium">Signing you in...</p>
       </div>
     </div>
   );
