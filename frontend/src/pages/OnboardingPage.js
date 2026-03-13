@@ -237,43 +237,14 @@ function AuthForm({ navigate, selectedLanguage }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      if (isLogin) {
-        await login(email, password);
-      } else {
-        await register(email, password, name);
-      }
-
-      try {
-        await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/user/language`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ language: selectedLanguage }),
-          credentials: 'include'
-        });
-      } catch (err) {
-        console.error('Failed to set language', err);
-      }
-
-      navigate('/dashboard', { replace: true });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDemoLogin = async () => {
     setError('');
     setLoading(true);
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'https://kisssn-v2.onrender.com';
     try {
       await login('demo@kisan.ai', 'demo123');
       try {
-        await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/user/language`, {
+        await fetch(`${backendUrl}/api/user/language`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ language: selectedLanguage }),
@@ -285,7 +256,7 @@ function AuthForm({ navigate, selectedLanguage }) {
       try {
         await register('demo@kisan.ai', 'demo123', 'Demo Farmer');
         try {
-          await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/user/language`, {
+          await fetch(`${backendUrl}/api/user/language`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ language: selectedLanguage }),
@@ -301,6 +272,7 @@ function AuthForm({ navigate, selectedLanguage }) {
     }
   };
 
+
   return (
     <div className="w-full max-w-sm" data-testid="auth-form">
       <div className="flex items-center gap-2 mb-6">
@@ -311,90 +283,21 @@ function AuthForm({ navigate, selectedLanguage }) {
       </div>
 
       <h2 className="font-['Outfit'] text-2xl font-bold text-gray-900 mb-1">
-        {isLogin ? 'Welcome Back' : 'Create Account'}
+        Start Farming
       </h2>
       <p className="text-gray-400 text-sm mb-6">
-        {isLogin ? 'Sign in to your account' : 'Join Kissan AI to start smart farming'}
+        Test our app with a ready-to-go farmer profile
       </p>
 
-      <div className="flex flex-col gap-3 mb-5">
-        <Button
-          data-testid="google-login-btn"
-          onClick={loginWithGoogle}
-          variant="outline"
-          className="w-full h-12 rounded-xl border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center justify-center gap-3 font-medium"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92a8.78 8.78 0 0 0 2.68-6.62z" fill="#4285F4" /><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33A9 9 0 0 0 9 18z" fill="#34A853" /><path d="M3.97 10.71A5.41 5.41 0 0 1 3.68 9c0-.59.1-1.17.29-1.71V4.96H.96A9 9 0 0 0 0 9s0 0 0 0a9 9 0 0 0 .96 4.04l3.01-2.33z" fill="#FBBC05" /><path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" fill="#EA4335" /></svg>
-          Continue with Google
-        </Button>
-        <Button
-          type="button"
-          onClick={handleDemoLogin}
-          variant="secondary"
-          className="w-full h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 flex items-center justify-center font-medium"
-          disabled={loading}
-        >
-          {loading ? 'Logging in...' : 'Skip & Try Demo'}
-        </Button>
-      </div>
+      {error && <p className="text-red-500 text-xs mb-4 text-center">{error}</p>}
 
-      <div className="flex items-center gap-3 mb-5">
-        <div className="flex-1 h-px bg-gray-100" />
-        <span className="text-xs text-gray-400">or</span>
-        <div className="flex-1 h-px bg-gray-100" />
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {!isLogin && (
-          <Input
-            data-testid="register-name-input"
-            type="text"
-            placeholder="Your name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="h-12 rounded-xl border-gray-200 text-gray-900 placeholder:text-gray-400"
-            required
-          />
-        )}
-        <Input
-          data-testid="email-input"
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="h-12 rounded-xl border-gray-200 text-gray-900 placeholder:text-gray-400"
-          required
-        />
-        <Input
-          data-testid="password-input"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="h-12 rounded-xl border-gray-200 text-gray-900 placeholder:text-gray-400"
-          required
-        />
-        {error && <p className="text-red-500 text-xs">{error}</p>}
-        <Button
-          data-testid="auth-submit-btn"
-          type="submit"
-          disabled={loading}
-          className="w-full h-12 rounded-full bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md shadow-green-500/20"
-        >
-          {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
-        </Button>
-      </form>
-
-      <p className="text-center mt-5 text-sm text-gray-400">
-        {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-        <button
-          data-testid="toggle-auth-mode"
-          onClick={() => { setIsLogin(!isLogin); setError(''); }}
-          className="text-green-600 hover:text-green-700 font-medium"
-        >
-          {isLogin ? 'Sign Up' : 'Sign In'}
-        </button>
-      </p>
+      <Button
+        onClick={handleDemoLogin}
+        disabled={loading}
+        className="w-full h-14 rounded-full bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-md shadow-green-500/30 flex items-center justify-center gap-2"
+      >
+        {loading ? 'Entering...' : 'Enter App (Demo)'}
+      </Button>
     </div>
   );
 }

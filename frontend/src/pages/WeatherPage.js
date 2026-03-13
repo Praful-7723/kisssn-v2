@@ -9,7 +9,7 @@ import {
   AlertTriangle, CheckCircle2, XCircle, MapPin, Calendar
 } from 'lucide-react';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || 'https://kisssn-v2.onrender.com'}/api`;
 
 const weatherEmoji = {
   0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️',
@@ -108,27 +108,24 @@ export default function WeatherPage() {
             <div className="flex gap-2">
               {['herbicide', 'fungicide', 'insecticide'].map(type => (
                 <button key={type} data-testid={`spray-${type}`} onClick={() => setSprayType(type)}
-                  className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all ${
-                    sprayType === type ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100'
-                  }`}>{type}</button>
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all ${sprayType === type ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100'
+                    }`}>{type}</button>
               ))}
             </div>
           </div>
 
-          <Card className={`rounded-2xl border ${
-            spraying.color === 'green' ? 'border-green-200 bg-green-50/30' :
-            spraying.color === 'orange' ? 'border-amber-200 bg-amber-50/30' : 'border-red-200 bg-red-50/30'
-          }`} data-testid="spray-window">
+          <Card className={`rounded-2xl border ${spraying.color === 'green' ? 'border-green-200 bg-green-50/30' :
+              spraying.color === 'orange' ? 'border-amber-200 bg-amber-50/30' : 'border-red-200 bg-red-50/30'
+            }`} data-testid="spray-window">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-gray-400">Current Window</p>
                 {spraying.color === 'green' ? <CheckCircle2 size={20} className="text-green-600" /> :
-                 spraying.color === 'orange' ? <AlertTriangle size={20} className="text-amber-600" /> :
-                 <XCircle size={20} className="text-red-500" />}
+                  spraying.color === 'orange' ? <AlertTriangle size={20} className="text-amber-600" /> :
+                    <XCircle size={20} className="text-red-500" />}
               </div>
-              <h3 className={`text-2xl font-['Outfit'] font-bold ${
-                spraying.color === 'green' ? 'text-green-700' : spraying.color === 'orange' ? 'text-amber-700' : 'text-red-600'
-              }`}>{spraying.status}</h3>
+              <h3 className={`text-2xl font-['Outfit'] font-bold ${spraying.color === 'green' ? 'text-green-700' : spraying.color === 'orange' ? 'text-amber-700' : 'text-red-600'
+                }`}>{spraying.status}</h3>
               <div className="flex items-center gap-6 mt-2">
                 <div>
                   <p className="text-[10px] text-gray-400">Delta T</p>
@@ -161,9 +158,8 @@ export default function WeatherPage() {
                   <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${h.color === 'green' ? 'bg-green-500' : h.color === 'orange' ? 'bg-amber-500' : 'bg-red-500'}`} />
                   <span className="text-xs text-gray-600 flex-1">{Math.round(h.temp)}°C</span>
                   <span className="text-xs text-gray-400">{h.wind} km/h</span>
-                  <Badge variant="outline" className={`text-[10px] py-0 ${
-                    h.status === 'Good' ? 'border-green-200 text-green-700' : h.status === 'Marginal' ? 'border-amber-200 text-amber-700' : 'border-red-200 text-red-600'
-                  }`}>{h.status}</Badge>
+                  <Badge variant="outline" className={`text-[10px] py-0 ${h.status === 'Good' ? 'border-green-200 text-green-700' : h.status === 'Marginal' ? 'border-amber-200 text-amber-700' : 'border-red-200 text-red-600'
+                    }`}>{h.status}</Badge>
                 </div>
               ))}
             </div>

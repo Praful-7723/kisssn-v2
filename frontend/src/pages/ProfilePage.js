@@ -10,7 +10,7 @@ import { MapPin, Edit3, Save, LogOut, Sprout, Globe, Leaf, Droplets, Mountain, U
 import { getT } from '@/utils/translations';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || 'https://kisssn-v2.onrender.com'}/api`;
 const cropOptions = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Sugarcane', 'Soybean', 'Groundnut', 'Potato', 'Tomato', 'Onion', 'Chili', 'Turmeric', 'Banana', 'Mango', 'Coconut', 'Tea', 'Coffee'];
 
 export default function ProfilePage() {

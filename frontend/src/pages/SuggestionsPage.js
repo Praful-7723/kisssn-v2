@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sprout, MapPin, Leaf, Droplets, ThermometerSun, Mountain } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || 'https://kisssn-v2.onrender.com'}/api`;
 
 export default function SuggestionsPage() {
   const { user, updateUser } = useAuth();
@@ -59,7 +59,7 @@ export default function SuggestionsPage() {
             const d = await geoRes.json();
             locationName = d.timezone?.split('/')[1]?.replace(/_/g, ' ') || locationName;
           }
-        } catch {}
+        } catch { }
         try {
           const res = await fetch(`${API}/user/farm`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -77,7 +77,7 @@ export default function SuggestionsPage() {
               toast.success(`Location set! Soil pH: ${soilData.ph}`);
             } else { updateUser(data); }
           }
-        } catch {}
+        } catch { }
         finally { setLoading(false); }
       },
       () => { toast.error('Location access denied'); setLoading(false); },
@@ -150,11 +150,10 @@ export default function SuggestionsPage() {
                 key={t.key}
                 data-testid={`suggestion-type-${t.key}`}
                 onClick={() => setActiveType(t.key)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-                  activeType === t.key
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${activeType === t.key
                     ? 'bg-green-600 text-white shadow-sm'
                     : 'bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 <t.icon size={14} />
                 {t.label}

@@ -8,7 +8,7 @@ import { Camera, Upload, AlertTriangle, Mountain, Droplets, MapPin, Search, Mic,
 import { getT } from '@/utils/translations';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || 'https://kisssn-v2.onrender.com'}/api`;
 
 export default function SoilScannerPage() {
     const { user, updateUser } = useAuth();

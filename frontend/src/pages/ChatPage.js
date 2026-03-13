@@ -7,7 +7,7 @@ import { Mic, MicOff, Send, Camera, Sparkles, Volume2, Loader2, Trash2, Play, Pa
 import { getT } from '@/utils/translations';
 import { toast } from 'sonner';
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || 'https://kisssn-v2.onrender.com'}/api`;
 
 const suggestions = [
   'Best crops for my soil?',
