@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
   }, [checkAuth]);
 
   const login = async (email, password) => {
-    const res = await fetch(`${API}/auth/login`, {
+    const res = await fetch(`${API}/auth/login?bust=1`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (email, password, name) => {
-    const res = await fetch(`${API}/auth/register`, {
+    const res = await fetch(`${API}/auth/register?bust=1`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

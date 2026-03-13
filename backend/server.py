@@ -895,7 +895,14 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://tame-bikes-flow.loca.lt"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:3001", 
+        "https://tame-bikes-flow.loca.lt",
+        "https://kisssn-v2.vercel.app",
+        "https://kisssn-v2-qz5jlnyj0-prafuls-projects-fa9beed1.vercel.app",
+        "https://kisssn-v2-prafuls-projects-fa9beed1.vercel.app"
+    ],
     allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.loca\.lt",
     allow_methods=["*"],
     allow_headers=["*"],
