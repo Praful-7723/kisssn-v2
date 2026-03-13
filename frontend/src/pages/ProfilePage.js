@@ -74,8 +74,24 @@ export default function ProfilePage() {
   const toggleCrop = (crop) => setCrops(prev => prev.includes(crop) ? prev.filter(c => c !== crop) : [...prev, crop]);
 
   const changeLanguage = async (lang) => {
+    if (lang === language) return;
+    const confirmChange = window.confirm("Do you want to change language? The app will refresh to apply changes.");
+    if (!confirmChange) return;
+
     setLanguage(lang);
-    try { await fetch(`${API}/user/language`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ language: lang }) }); } catch { }
+    try {
+      const res = await fetch(`${API}/user/language`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ language: lang })
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch {
+      toast.error("Failed to change language");
+    }
   };
 
   return (
@@ -99,11 +115,11 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
               <div className="flex items-center gap-2">
                 <MapPin size={14} className="text-green-600" />
-                <span className="text-sm text-gray-600">{user?.location?.name || 'No location set'}</span>
+                <span className="text-sm text-gray-600">{user?.location?.name || t.home}</span>
               </div>
               <Button data-testid="set-location-btn" size="sm" onClick={updateLocation} disabled={locating}
                 className="h-8 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs gap-1.5">
-                {locating ? <><Loader2 size={12} className="animate-spin" /> Locating</> : <><Navigation size={12} /> {user?.location?.name ? 'Update' : 'Set'}</>}
+                {locating ? <><Loader2 size={12} className="animate-spin" /> {t.locating}</> : <><Navigation size={12} /> {user?.location?.name ? t.edit : t.save}</>}
               </Button>
             </div>
           </CardContent>
@@ -118,11 +134,11 @@ export default function ProfilePage() {
               <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 flex items-center gap-2 tracking-wide"><Mountain size={14} /> {t.soilProfile}</h3>
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="p-3 rounded-xl bg-green-50 border border-green-100">
-                  <p className="text-[10px] text-gray-400 mb-0.5">pH Level</p>
+                  <p className="text-[10px] text-gray-400 mb-0.5">{t.phLevel}</p>
                   <p className="text-xl font-['Outfit'] font-bold text-green-700">{user.soil_profile.ph}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
-                  <p className="text-[10px] text-gray-400 mb-0.5">Soil Type</p>
+                  <p className="text-[10px] text-gray-400 mb-0.5">{t.soilType}</p>
                   <p className="text-sm font-bold text-gray-800">{user.soil_profile.soil_type || 'N/A'}</p>
                 </div>
                 {user.soil_profile.organic_carbon && (
@@ -132,8 +148,8 @@ export default function ProfilePage() {
                   </div>
                 )}
                 <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
-                  <p className="text-[10px] text-gray-400 mb-0.5">Data Source</p>
-                  <p className="text-xs font-medium text-gray-600">{user.soil_profile.source === 'SoilGrids' ? 'ISRIC SoilGrids' : 'Regional Estimate'}</p>
+                  <p className="text-[10px] text-gray-400 mb-0.5">{t.source}</p>
+                  <p className="text-xs font-medium text-gray-600">{user.soil_profile.source === 'SoilGrids' ? t.satellite : t.estimated}</p>
                 </div>
               </div>
             </CardContent>
@@ -170,16 +186,16 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="space-y-2.5">
-                <div className="flex justify-between py-1.5"><span className="text-xs text-gray-400">Farm Name</span><span className="text-sm text-gray-800">{user?.farm_info?.farm_name || 'Not set'}</span></div>
+                <div className="flex justify-between py-1.5"><span className="text-xs text-gray-400">{t.farmName}</span><span className="text-sm text-gray-800">{user?.farm_info?.farm_name || t.notSet}</span></div>
                 <Separator className="bg-gray-100" />
-                <div className="flex justify-between py-1.5"><span className="text-xs text-gray-400">Size</span><span className="text-sm text-gray-800">{user?.farm_info?.farm_size || 'Not set'}</span></div>
+                <div className="flex justify-between py-1.5"><span className="text-xs text-gray-400">{t.farmSize}</span><span className="text-sm text-gray-800">{user?.farm_info?.farm_size || t.notSet}</span></div>
                 <Separator className="bg-gray-100" />
                 <div>
-                  <span className="text-xs text-gray-400">Crops</span>
+                  <span className="text-xs text-gray-400">{t.crops}</span>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {(user?.farm_info?.crops || []).length > 0 ? user.farm_info.crops.map(c => (
                       <Badge key={c} className="text-[10px] bg-green-50 text-green-700 border border-green-200">{c}</Badge>
-                    )) : <span className="text-xs text-gray-300">No crops selected</span>}
+                    )) : <span className="text-xs text-gray-300">{t.notSet}</span>}
                   </div>
                 </div>
               </div>

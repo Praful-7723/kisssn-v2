@@ -20,13 +20,7 @@ const weatherEmoji = {
   80: '🌦️', 81: '🌧️', 82: '🌧️', 95: '⛈️', 96: '⛈️', 99: '⛈️'
 };
 
-const quickActions = [
-  { id: 'suggest', icon: Lightbulb, label: 'Crop Suggestions', desc: 'What to grow', path: '/suggestions', bg: 'bg-green-50', iconColor: 'text-green-600', border: 'border-green-100' },
-  { id: 'scan-disease', icon: Camera, label: 'Disease Scanner', desc: 'Scan plant health', path: '/disease', bg: 'bg-blue-50', iconColor: 'text-blue-600', border: 'border-blue-100' },
-  { id: 'scan-soil', icon: Sprout, label: 'Soil Scanner', desc: 'pH & Fertilizer', path: '/soil', bg: 'bg-amber-50', iconColor: 'text-amber-600', border: 'border-amber-100' },
-  { id: 'chat', icon: MessageSquare, label: 'AI Chat', desc: 'Ask anything', path: '/chat', bg: 'bg-emerald-50', iconColor: 'text-emerald-600', border: 'border-emerald-100' },
-  { id: 'community', icon: Users, label: 'Community', desc: 'Connect with farmers', path: '/community', bg: 'bg-purple-50', iconColor: 'text-purple-600', border: 'border-purple-100' },
-];
+
 
 export default function DashboardPage() {
   const { user, updateUser } = useAuth();
@@ -35,6 +29,14 @@ export default function DashboardPage() {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
+
+  const quickActions = [
+    { id: 'suggest', icon: Lightbulb, label: t.suggestionsTitle, desc: t.cropSugDesc, path: '/suggestions', bg: 'bg-green-50', iconColor: 'text-green-600', border: 'border-green-100' },
+    { id: 'scan-disease', icon: Camera, label: t.scanTitle, desc: t.diseaseScanDesc, path: '/disease', bg: 'bg-blue-50', iconColor: 'text-blue-600', border: 'border-blue-100' },
+    { id: 'scan-soil', icon: Sprout, label: t.soilScannerTitle, desc: t.soilScanDesc, path: '/soil', bg: 'bg-amber-50', iconColor: 'text-amber-600', border: 'border-amber-100' },
+    { id: 'chat', icon: MessageSquare, label: t.aiChatTitle, desc: t.aiChatDesc, path: '/chat', bg: 'bg-emerald-50', iconColor: 'text-emerald-600', border: 'border-emerald-100' },
+    { id: 'community', icon: Users, label: t.community, desc: t.communityDesc, path: '/community', bg: 'bg-purple-50', iconColor: 'text-purple-600', border: 'border-purple-100' },
+  ];
 
   const fetchWeather = useCallback(async () => {
     const lat = user?.location?.lat;
@@ -129,15 +131,15 @@ export default function DashboardPage() {
               <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center mb-3">
                 <Navigation size={24} className="text-green-600" />
               </div>
-              <h3 className="font-['Outfit'] font-bold text-gray-900 mb-1">Set Your Farm Location</h3>
-              <p className="text-xs text-gray-500 mb-4 max-w-[260px]">Enable location to get soil analysis, weather data, and crop recommendations for your area</p>
+              <h3 className="font-['Outfit'] font-bold text-gray-900 mb-1">{t.setLocation}</h3>
+              <p className="text-xs text-gray-500 mb-4 max-w-[260px]">{t.locationDesc}</p>
               <Button
                 data-testid="enable-location-btn"
                 onClick={requestLocation}
                 disabled={locating}
                 className="h-11 rounded-full bg-green-600 hover:bg-green-700 text-white font-semibold px-6 gap-2 shadow-sm"
               >
-                {locating ? <><Loader2 size={16} className="animate-spin" /> Locating...</> : <><MapPin size={16} /> Enable Location</>}
+                {locating ? <><Loader2 size={16} className="animate-spin" /> {t.locating}</> : <><MapPin size={16} /> {t.enableLocation}</>}
               </Button>
             </CardContent>
           </Card>
@@ -182,7 +184,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-1.5 ml-auto">
                     <div className={`w-2 h-2 rounded-full ${sprayColor === 'green' ? 'bg-green-500' : sprayColor === 'orange' ? 'bg-amber-500' : 'bg-red-500'}`} />
                     <span className={`text-xs font-medium ${sprayColor === 'green' ? 'text-green-600' : sprayColor === 'orange' ? 'text-amber-600' : 'text-red-500'}`}>
-                      Spray: {sprayStatus}
+                      {t.spray}: {t[sprayStatus.toLowerCase()] || sprayStatus}
                     </span>
                   </div>
                 )}
@@ -204,12 +206,12 @@ export default function DashboardPage() {
                   <p className="text-lg font-bold text-green-700">{user.soil_profile.ph}</p>
                 </div>
                 <div className="text-center p-2.5 rounded-xl bg-gray-50">
-                  <p className="text-[10px] text-gray-500 mb-0.5">Type</p>
+                  <p className="text-[10px] text-gray-500 mb-0.5">{t.soilType}</p>
                   <p className="text-xs font-semibold text-gray-800">{user.soil_profile.soil_type || 'N/A'}</p>
                 </div>
                 <div className="text-center p-2.5 rounded-xl bg-gray-50">
-                  <p className="text-[10px] text-gray-500 mb-0.5">Source</p>
-                  <p className="text-[10px] font-medium text-gray-600">{user.soil_profile.source === 'SoilGrids' ? 'Satellite' : 'Estimated'}</p>
+                  <p className="text-[10px] text-gray-500 mb-0.5">{t.source}</p>
+                  <p className="text-[10px] font-medium text-gray-600">{user.soil_profile.source === 'SoilGrids' ? t.satellite : t.estimated}</p>
                 </div>
               </div>
             </CardContent>
@@ -219,7 +221,7 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <motion.div initial="initial" animate="animate">
-        <h2 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 tracking-wide">SMART SUPPORT</h2>
+        <h2 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 tracking-wide">{t.smartSupport}</h2>
         <div className="grid grid-cols-2 gap-3">
           {quickActions.map((action, i) => (
             <motion.div key={action.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
@@ -251,7 +253,7 @@ export default function DashboardPage() {
               <Lightbulb size={15} className="text-green-600" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-green-700 mb-0.5">Daily Tip</p>
+              <p className="text-xs font-semibold text-green-700 mb-0.5">{t.dailyTip}</p>
               <p className="text-xs text-gray-500 leading-relaxed">
                 Check soil moisture before watering. Over-irrigation reduces root oxygen and promotes root rot. Morning watering is most efficient.
               </p>

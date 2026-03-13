@@ -246,8 +246,8 @@ Use these EXACT keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_le
     return (
         <div className="p-4 space-y-5 pb-24" data-testid="soil-scanner-page">
             <div className="pt-2">
-                <h1 className="font-['Outfit'] text-2xl font-bold text-gray-900 tracking-tight">Soil Intelligence</h1>
-                <p className="text-sm text-gray-500 mt-1">Detect soil pH, get crop & fertilizer formulas</p>
+                <h1 className="font-['Outfit'] text-2xl font-bold text-gray-900 tracking-tight">{t.soilScannerTitle}</h1>
+                <p className="text-sm text-gray-500 mt-1">{t.soilScannerDesc}</p>
             </div>
 
             {/* Auto Location & pH Context */}
@@ -262,7 +262,7 @@ Use these EXACT keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_le
                                 <p className="text-[13px] font-semibold text-amber-900">Current Geo-Profile</p>
                                 <div className="flex gap-2 items-center mt-1">
                                     <Badge variant="outline" className="text-[11px] bg-white border-amber-200 text-amber-800 font-medium">
-                                        <Mountain size={12} className="mr-1.5" /> Est. pH: {estimatedPh || 'Detecting...'}
+                                        <Mountain size={12} className="mr-1.5" /> {t.phLevel}: {estimatedPh || t.analyzing}
                                     </Badge>
                                 </div>
                             </div>
@@ -280,34 +280,34 @@ Use these EXACT keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_le
                             <div className="w-24 h-24 rounded-full bg-orange-50 flex items-center justify-center mb-6 shadow-sm border border-orange-100">
                                 <Search size={40} className="text-orange-500" />
                             </div>
-                            <h2 className="font-['Outfit'] text-xl font-bold text-gray-900 mb-2">Analyze Soil Condition</h2>
-                            <p className="text-sm text-gray-500 mb-8 max-w-[280px]">Upload a photo or describe your soil issue using voice. AI will recommend specific fertilizers and crops.</p>
+                            <h2 className="font-['Outfit'] text-xl font-bold text-gray-900 mb-2">{t.analyzeSoilImage}</h2>
+                            <p className="text-sm text-gray-500 mb-8 max-w-[280px]">{t.soilScanDesc}</p>
 
                             <div className="flex flex-col gap-3 w-full max-w-sm">
                                 <div className="flex gap-3">
                                     <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
                                     <Button onClick={() => cameraInputRef.current?.click()}
                                         className="flex-1 h-14 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-2 shadow-md hover:shadow-lg transition-all">
-                                        <Camera size={20} /> Camera
+                                        <Camera size={20} /> {t.scan}
                                     </Button>
 
                                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
                                     <Button onClick={() => fileInputRef.current?.click()} variant="outline"
                                         className="flex-1 h-14 rounded-2xl border border-gray-200 text-gray-800 font-semibold gap-2 hover:bg-gray-50 bg-white shadow-sm">
-                                        <Upload size={20} /> Upload
+                                        <Upload size={20} /> {t.uploadImage}
                                     </Button>
                                 </div>
 
                                 <div className="relative flex items-center py-2">
                                     <div className="flex-grow border-t border-gray-100"></div>
-                                    <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-medium uppercase tracking-widest">or</span>
+                                    <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-medium uppercase tracking-widest">{t.nav === 'नेविगेशन' ? 'या' : 'or'}</span>
                                     <div className="flex-grow border-t border-gray-100"></div>
                                 </div>
 
                                 <Button
                                     onClick={startRecording}
                                     className="w-full h-14 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold gap-2 transition-all border border-indigo-200">
-                                    <Mic size={20} /> Add Voice Note
+                                    <Mic size={20} /> {t.voiceNote}
                                 </Button>
                             </div>
                         </CardContent>
@@ -326,12 +326,12 @@ Use these EXACT keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_le
                             >
                                 <Mic size={40} />
                             </motion.div>
-                            <h3 className="font-['Outfit'] text-xl font-bold text-gray-900 mb-2">Analyzing Voice...</h3>
+                            <h3 className="font-['Outfit'] text-xl font-bold text-gray-900 mb-2">{t.analyzing}</h3>
                             <p className="text-4xl font-mono text-indigo-600 mb-8 font-light">{formatTime(recordingTime)}</p>
                             <Button
                                 onClick={stopRecording}
                                 className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 text-lg shadow-md">
-                                <Square size={20} fill="currentColor" /> Finish & Analyze
+                                <Square size={20} fill="currentColor" /> {t.save} & {t.scan}
                             </Button>
                         </CardContent>
                     </Card>
@@ -356,7 +356,7 @@ Use these EXACT keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_le
                                     Cancel
                                 </Button>
                                 <Button onClick={() => submitAnalysis(imageFile, audioBlob)} className="flex-1 h-12 rounded-xl bg-amber-600 text-white font-semibold shadow-md">
-                                    Analyze Now
+                                    {t.scan}
                                 </Button>
                             </div>
                         )}
@@ -376,8 +376,8 @@ Use these EXACT keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_le
                                     <div className="absolute inset-2 rounded-full border-[4px] border-orange-400 border-b-transparent border-r-transparent animate-spin-reverse"></div>
                                     <Search size={24} className="text-orange-600" />
                                 </motion.div>
-                                <h3 className="font-['Outfit'] text-xl font-bold text-gray-900 mb-1">Processing Analysis</h3>
-                                <p className="text-sm text-gray-500 font-medium animate-pulse">Running AI models globally...</p>
+                                <h3 className="font-['Outfit'] text-xl font-bold text-gray-900 mb-1">{t.analyzing}</h3>
+                                <p className="text-sm text-gray-500 font-medium animate-pulse">{t.poweredBy}</p>
                             </div>
                         )}
                     </Card>
@@ -484,7 +484,7 @@ Use these EXACT keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_le
                                 >
                                     <div className="absolute bottom-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mb-10"></div>
                                     <div className="flex items-center gap-2 mb-3 relative">
-                                        <p className="text-sm text-blue-800 font-bold uppercase tracking-wide">Ideal Crops & Duration</p>
+                                        <p className="text-sm text-blue-800 font-bold uppercase tracking-wide">{t.recommendedCrops}</p>
                                     </div>
                                     <div className="text-[15px] text-blue-950 font-medium leading-relaxed relative z-10">
                                         {Array.isArray(result.recommended_crops) ? (

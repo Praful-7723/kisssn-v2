@@ -11,6 +11,13 @@ import {
 
 const API = `${process.env.REACT_APP_BACKEND_URL || 'https://kisssn-v2.onrender.com'}/api`;
 
+const getWeatherT = (t) => ({
+  0: t.clear, 1: t.mainlyClear, 2: t.partlyCloudy, 3: t.overcast,
+  45: t.foggy, 51: t.lightDrizzle, 53: t.drizzle, 55: t.denseDrizzle,
+  61: t.slightRain, 63: t.rain, 65: t.heavyRain,
+  80: t.rainShowers, 81: t.moderateShowers, 82: t.heavyShowers, 95: t.thunderstorm
+});
+
 const weatherEmoji = {
   0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️',
   51: '🌦️', 53: '🌦️', 55: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️',
@@ -26,6 +33,8 @@ const weatherDescs = {
 
 export default function WeatherPage() {
   const { user } = useAuth();
+  const t = getT(user?.language);
+  const weatherT = getWeatherT(t);
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sprayType, setSprayType] = useState('herbicide');
@@ -58,10 +67,10 @@ export default function WeatherPage() {
     <div className="p-4 space-y-5" data-testid="weather-page">
       <div className="flex items-center justify-between pt-2">
         <div>
-          <h1 className="font-['Outfit'] text-xl font-bold text-gray-900">Weather</h1>
+          <h1 className="font-['Outfit'] text-xl font-bold text-gray-900">{t.weather}</h1>
           <div className="flex items-center gap-1 mt-0.5">
             <MapPin size={12} className="text-green-600" />
-            <span className="text-xs text-gray-400">{user?.location?.name || 'Your Farm'}</span>
+            <span className="text-xs text-gray-400">{user?.location?.name || t.home}</span>
           </div>
         </div>
       </div>
@@ -73,8 +82,8 @@ export default function WeatherPage() {
           <div className="text-5xl font-['Outfit'] font-bold text-gray-900">
             {Math.round(current.temperature || 0)}<span className="text-2xl text-gray-400">°C</span>
           </div>
-          <p className="text-sm text-gray-500 mt-1 uppercase tracking-wider text-xs">{current.weather_desc || 'Clear'}</p>
-          <p className="text-xs text-gray-400 mt-0.5">Feels like {Math.round(current.feels_like || 0)}°C</p>
+          <p className="text-sm text-gray-500 mt-1 uppercase tracking-wider text-xs">{weatherT[current.weather_code] || current.weather_desc || t.clear}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{t.feelsLike} {Math.round(current.feels_like || 0)}°C</p>
           <div className="flex justify-center gap-8 mt-4 pt-3 border-t border-gray-100">
             <div className="flex items-center gap-1.5">
               <Droplets size={14} className="text-blue-500" />
@@ -95,21 +104,21 @@ export default function WeatherPage() {
       <Tabs defaultValue="spraying" className="w-full">
         <TabsList className="w-full bg-gray-100 rounded-xl p-1">
           <TabsTrigger value="spraying" className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs" data-testid="tab-spraying">
-            <Calendar size={14} className="mr-1.5" /> Spraying
+            <Calendar size={14} className="mr-1.5" /> {t.spray}
           </TabsTrigger>
           <TabsTrigger value="forecast" className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs" data-testid="tab-forecast">
-            <Eye size={14} className="mr-1.5" /> Forecast
+            <Eye size={14} className="mr-1.5" /> {t.weatherForecast}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="spraying" className="mt-4 space-y-4">
           <div>
-            <p className="text-xs text-gray-400 mb-2 font-medium">Application Type</p>
+            <p className="text-xs text-gray-400 mb-2 font-medium">{t.applicationType}</p>
             <div className="flex gap-2">
               {['herbicide', 'fungicide', 'insecticide'].map(type => (
                 <button key={type} data-testid={`spray-${type}`} onClick={() => setSprayType(type)}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all ${sprayType === type ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100'
-                    }`}>{type}</button>
+                    }`}>{t[type] || type}</button>
               ))}
             </div>
           </div>
@@ -119,13 +128,13 @@ export default function WeatherPage() {
             }`} data-testid="spray-window">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-gray-400">Current Window</p>
+                <p className="text-xs text-gray-400">{t.window}</p>
                 {spraying.color === 'green' ? <CheckCircle2 size={20} className="text-green-600" /> :
                   spraying.color === 'orange' ? <AlertTriangle size={20} className="text-amber-600" /> :
                     <XCircle size={20} className="text-red-500" />}
               </div>
               <h3 className={`text-2xl font-['Outfit'] font-bold ${spraying.color === 'green' ? 'text-green-700' : spraying.color === 'orange' ? 'text-amber-700' : 'text-red-600'
-                }`}>{spraying.status}</h3>
+                }`}>{t[spraying.status?.toLowerCase()] || spraying.status}</h3>
               <div className="flex items-center gap-6 mt-2">
                 <div>
                   <p className="text-[10px] text-gray-400">Delta T</p>
@@ -148,7 +157,7 @@ export default function WeatherPage() {
           </Card>
 
           <div>
-            <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-2">Next 24h Planner</h3>
+            <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-2">{t.next24h}</h3>
             <div className="space-y-1 max-h-[280px] overflow-y-auto">
               {planner.slice(0, 24).map((h, i) => (
                 <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
@@ -159,7 +168,7 @@ export default function WeatherPage() {
                   <span className="text-xs text-gray-600 flex-1">{Math.round(h.temp)}°C</span>
                   <span className="text-xs text-gray-400">{h.wind} km/h</span>
                   <Badge variant="outline" className={`text-[10px] py-0 ${h.status === 'Good' ? 'border-green-200 text-green-700' : h.status === 'Marginal' ? 'border-amber-200 text-amber-700' : 'border-red-200 text-red-600'
-                    }`}>{h.status}</Badge>
+                    }`}>{t[h.status?.toLowerCase()] || h.status}</Badge>
                 </div>
               ))}
             </div>
@@ -174,9 +183,9 @@ export default function WeatherPage() {
                   <span className="text-2xl">{weatherEmoji[daily.weather_code?.[i]] || '🌤️'}</span>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">
-                      {i === 0 ? 'Today' : new Date(day).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {i === 0 ? t.home : new Date(day).toLocaleDateString(user?.language === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
-                    <p className="text-[10px] text-gray-400">{weatherDescs[daily.weather_code?.[i]] || 'Clear'}</p>
+                    <p className="text-[10px] text-gray-400">{weatherT[daily.weather_code?.[i]] || t.clear}</p>
                   </div>
                 </div>
                 <div className="text-right">

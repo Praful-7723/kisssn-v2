@@ -60,13 +60,13 @@ export default function DiseaseScannerPage() {
               <div className="w-20 h-20 rounded-3xl bg-green-50 border border-green-200 flex items-center justify-center mb-5">
                 <Leaf size={36} className="text-green-600" />
               </div>
-              <h2 className="font-['Outfit'] text-lg font-bold text-gray-900 mb-1">Scan Your Plant</h2>
-              <p className="text-xs text-gray-400 mb-6 max-w-[250px]">Take a photo or upload an image to detect diseases</p>
+              <h2 className="font-['Outfit'] text-lg font-bold text-gray-900 mb-1">{t.analyzeSoilImage}</h2>
+              <p className="text-xs text-gray-400 mb-6 max-w-[250px]">{t.diseaseScanDesc}</p>
               <div className="flex gap-3 w-full max-w-xs">
                 <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
                 <Button data-testid="camera-btn" onClick={() => cameraInputRef.current?.click()}
                   className="flex-1 h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold gap-2 shadow-sm">
-                  <Camera size={18} /> Camera
+                  <Camera size={18} /> {t.scan}
                 </Button>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
                 <Button data-testid="upload-btn" onClick={() => fileInputRef.current?.click()} variant="outline"
@@ -108,19 +108,19 @@ export default function DiseaseScannerPage() {
                       {result.confidence && (
                         <div className="text-right">
                           <p className="text-2xl font-['Outfit'] font-bold text-gray-900">{result.confidence}%</p>
-                          <p className="text-[10px] text-gray-400">Confidence</p>
+                          <p className="text-[10px] text-gray-400">{t.confidence}</p>
                         </div>
                       )}
                     </div>
                     {result.disease_name && result.disease_name !== 'None' && (
                       <div className="p-3 rounded-xl bg-red-50 border border-red-100">
-                        <p className="text-xs text-red-600 font-semibold mb-0.5">Disease Detected</p>
+                        <p className="text-xs text-red-600 font-semibold mb-0.5">{t.diseaseDetected}</p>
                         <p className="text-sm text-gray-800">{result.disease_name}</p>
                       </div>
                     )}
                     {result.symptoms && (
                       <div>
-                        <p className="text-xs text-gray-400 font-semibold mb-1.5">Symptoms</p>
+                        <p className="text-xs text-gray-400 font-semibold mb-1.5">{t.symptoms}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {(Array.isArray(result.symptoms) ? result.symptoms : [result.symptoms]).map((s, i) => (
                             <Badge key={i} variant="outline" className="text-[10px] border-gray-200 text-gray-600">{s}</Badge>
@@ -130,13 +130,13 @@ export default function DiseaseScannerPage() {
                     )}
                     {result.treatment && (
                       <div className="p-3 rounded-xl bg-green-50 border border-green-100">
-                        <p className="text-xs text-green-700 font-semibold mb-0.5">Treatment</p>
+                        <p className="text-xs text-green-700 font-semibold mb-0.5">{t.treatment}</p>
                         <p className="text-xs text-gray-600 leading-relaxed">{Array.isArray(result.treatment) ? result.treatment.join('. ') : result.treatment}</p>
                       </div>
                     )}
                     {result.prevention && (
                       <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
-                        <p className="text-xs text-blue-700 font-semibold mb-0.5">Prevention</p>
+                        <p className="text-xs text-blue-700 font-semibold mb-0.5">{t.prevention}</p>
                         <p className="text-xs text-gray-600 leading-relaxed">{Array.isArray(result.prevention) ? result.prevention.join('. ') : result.prevention}</p>
                       </div>
                     )}

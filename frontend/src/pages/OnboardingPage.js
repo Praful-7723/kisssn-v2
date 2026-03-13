@@ -202,15 +202,59 @@ export default function OnboardingPage() {
                 onClick={() => setStep(s => s + 1)}
                 className="w-full h-14 rounded-full bg-green-600 hover:bg-green-700 text-white font-semibold text-base shadow-md shadow-green-500/20 flex items-center justify-center gap-2"
               >
-                Get Started <ChevronRight size={18} />
+                Continue <ChevronRight size={18} />
               </Button>
-              <button
-                onClick={() => setStep(s => s - 1)}
-                className="absolute left-1/2 -translate-x-1/2 mt-4 text-gray-400 text-sm hover:text-gray-600 transition-colors"
-              >
-                Back
-              </button>
             </motion.div>
+          </motion.div>
+        ) : step === onboardingSlides.length + 1 ? (
+          <motion.div
+            key="permissions"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.35 }}
+            className="flex-1 flex flex-col justify-center items-center px-8 py-12 relative z-10 w-full max-w-sm mx-auto"
+          >
+            <div className="w-20 h-20 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mb-8">
+              <Check size={40} className="text-amber-600" />
+            </div>
+            <h1 className="font-['Outfit'] text-3xl font-bold text-gray-900 mb-2 text-center">Enable Access</h1>
+            <p className="text-sm text-gray-500 mb-8 text-center">We need these permissions for soil analysis and voice chat to work correctly.</p>
+
+            <div className="w-full space-y-4 mb-10">
+              <button
+                onClick={() => navigator.geolocation.getCurrentPosition(() => {}, () => {})}
+                className="w-full p-4 rounded-xl border-2 border-gray-100 hover:border-green-200 flex items-center gap-4 transition-all"
+              >
+                <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                  <MapPin size={20} />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-sm">Location Access</p>
+                  <p className="text-[10px] text-gray-400">For soil pH and weather data</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {})}
+                className="w-full p-4 rounded-xl border-2 border-gray-100 hover:border-green-200 flex items-center gap-4 transition-all"
+              >
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                  <Droplets size={20} />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-sm">Microphone Access</p>
+                  <p className="text-[10px] text-gray-400">For voice commands and chat</p>
+                </div>
+              </button>
+            </div>
+
+            <Button
+              onClick={() => setStep(s => s + 1)}
+              className="w-full h-14 rounded-full bg-green-600 hover:bg-green-700 text-white font-semibold text-base shadow-md shadow-green-500/20 flex items-center justify-center gap-2"
+            >
+              Get Started <ChevronRight size={18} />
+            </Button>
           </motion.div>
         ) : (
           <motion.div

@@ -67,14 +67,20 @@ export default function ChatPage() {
       });
       if (res.ok) {
         const data = await res.json();
+        const assistantMsgId = data.message_id || Date.now().toString() + '_ai';
         setMessages(prev => [...prev, {
-          id: data.message_id,
+          id: assistantMsgId,
           role: 'assistant',
           content: data.primary_text || data.content,
           english_translation: data.english_translation,
           audio_chunks: data.audio_chunks || [],
           time: new Date().toISOString()
         }]);
+        
+        // Auto-play response if audio is available
+        if (data.audio_chunks && data.audio_chunks.length > 0) {
+          speakText(assistantMsgId, data.primary_text || data.content, data.audio_chunks);
+        }
       } else { toast.error('Failed to get response'); }
     } catch { toast.error('Connection error'); }
     finally { setIsLoading(false); }
@@ -103,33 +109,28 @@ export default function ChatPage() {
     const langMap = { 'en': 'en-IN', 'hi': 'hi-IN', 'ta': 'ta-IN', 'te': 'te-IN', 'ml': 'ml-IN', 'mr': 'mr-IN' };
     recognition.lang = langMap[user?.language] || 'en-IN';
 
-    let currentFinal = '';
-
     recognition.onresult = (e) => {
-      let interim = '';
-      let final = '';
-      for (let i = e.resultIndex; i < e.results.length; ++i) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let i = 0; i < e.results.length; ++i) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        } else {
+          interimTranscript += e.results[i][0].transcript;
+        }
       }
-      currentFinal += final;
-      setInput(currentFinal + interim);
+      setInput(finalTranscript + interimTranscript);
     };
+
     recognition.onerror = () => setIsListening(false);
     recognition.onend = () => {
       setIsListening(false);
-      // Wait a tick for the React state (input) to be captured by closure or just use `currentFinal`
-      if (currentFinal.trim()) {
-        sendMessage(currentFinal.trim());
-      } else {
-        // Fallback to reading the input state manually by referencing it if needed,
-        // but since we dispatch sendMessage immediately, we can use a callback or just trust currentFinal.
-        // Actually, we pass a function to setInput to also capture the value
-        setInput((prev) => {
-          if (prev.trim() && !currentFinal.trim()) sendMessage(prev.trim());
-          return prev;
-        });
-      }
+      setInput((prev) => {
+        if (prev && prev.trim()) {
+          sendMessage(prev.trim());
+        }
+        return prev;
+      });
     };
     recognitionRef.current = recognition;
     recognition.start();
@@ -173,9 +174,10 @@ export default function ChatPage() {
     setActiveMessageId(msgId);
     setIsPlaying(true);
     try {
+      const langMap = { 'en': 'en-IN', 'hi': 'hi-IN', 'ta': 'ta-IN', 'te': 'te-IN', 'ml': 'ml-IN', 'mr': 'mr-IN' };
       const res = await fetch(`${API}/voice/tts`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ text: text.substring(0, 500), language: user?.language === 'hi' ? 'hi-IN' : 'en-IN' })
+        body: JSON.stringify({ text: text.substring(0, 500), language: langMap[user?.language] || 'en-IN' })
       });
       if (res.ok) {
         const data = await res.json();

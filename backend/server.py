@@ -306,14 +306,39 @@ async def estimate_soil(request: Request):
                 db.table("users").update({"soil_profile": soil_profile}).eq("user_id", user["user_id"]).execute()
                 return soil_profile
             else:
-                soil_profile = _estimate_soil_by_region(lat, lon)
+                soil_profile = await _estimate_soil_with_ai(lat, lon)
                 db.table("users").update({"soil_profile": soil_profile}).eq("user_id", user["user_id"]).execute()
                 return soil_profile
     except Exception as e:
         logger.error(f"SoilGrids API error: {e}")
-        soil_profile = _estimate_soil_by_region(lat, lon)
+        soil_profile = await _estimate_soil_with_ai(lat, lon)
         db.table("users").update({"soil_profile": soil_profile}).eq("user_id", user["user_id"]).execute()
         return soil_profile
+
+async def _estimate_soil_with_ai(lat, lon):
+    try:
+        from ai_helpers import gemini_chat
+        prompt = f"""Estimate the soil properties for coordinates lat={lat}, lon={lon} in India.
+Consider the geological region and typical soil data for these specific coordinates.
+Return ONLY valid JSON with keys: 'soil_type', 'ph', 'organic_carbon', 'clay_pct', 'sand_pct', 'silt_pct', 'source'.
+Set 'source' to 'AI Estimation'.
+'ph' should be a float with 1 decimal.
+Example: {{"soil_type": "Black Cotton", "ph": 7.4, "organic_carbon": 12.5, "clay_pct": 45, "sand_pct": 20, "silt_pct": 35, "source": "AI Estimation"}}"""
+        res_json = await gemini_chat("You are a geological and soil science expert specializing in Indian agriculture.", prompt)
+        import json
+        # Clean potential markdown from response
+        clean_json = res_json.strip()
+        if clean_json.startswith("```json"):
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif clean_json.startswith("```"):
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+        data = json.loads(clean_json)
+        data["lat"] = lat
+        data["lon"] = lon
+        return data
+    except Exception as e:
+        logger.error(f"AI Soil Estimation failed: {e}")
+        return _estimate_soil_by_region(lat, lon)
 
 def _estimate_soil_by_region(lat, lon):
     if 8 <= lat <= 13:
