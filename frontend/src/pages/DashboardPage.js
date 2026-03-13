@@ -9,6 +9,7 @@ import {
   Users, MapPin, Sprout, ChevronRight, Navigation, Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getT } from '@/utils/translations';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -21,14 +22,16 @@ const weatherEmoji = {
 
 const quickActions = [
   { id: 'suggest', icon: Lightbulb, label: 'Crop Suggestions', desc: 'What to grow', path: '/suggestions', bg: 'bg-green-50', iconColor: 'text-green-600', border: 'border-green-100' },
-  { id: 'scan', icon: Camera, label: 'Disease Scanner', desc: 'Scan plant health', path: '/disease', bg: 'bg-blue-50', iconColor: 'text-blue-600', border: 'border-blue-100' },
-  { id: 'chat', icon: MessageSquare, label: 'AI Chat', desc: 'Ask anything', path: '/chat', bg: 'bg-amber-50', iconColor: 'text-amber-600', border: 'border-amber-100' },
+  { id: 'scan-disease', icon: Camera, label: 'Disease Scanner', desc: 'Scan plant health', path: '/disease', bg: 'bg-blue-50', iconColor: 'text-blue-600', border: 'border-blue-100' },
+  { id: 'scan-soil', icon: Sprout, label: 'Soil Scanner', desc: 'pH & Fertilizer', path: '/soil', bg: 'bg-amber-50', iconColor: 'text-amber-600', border: 'border-amber-100' },
+  { id: 'chat', icon: MessageSquare, label: 'AI Chat', desc: 'Ask anything', path: '/chat', bg: 'bg-emerald-50', iconColor: 'text-emerald-600', border: 'border-emerald-100' },
   { id: 'community', icon: Users, label: 'Community', desc: 'Connect with farmers', path: '/community', bg: 'bg-purple-50', iconColor: 'text-purple-600', border: 'border-purple-100' },
 ];
 
 export default function DashboardPage() {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  const t = getT(user?.language);
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
@@ -57,12 +60,13 @@ export default function DashboardPage() {
         const { latitude, longitude } = pos.coords;
         let locationName = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
         try {
-          const geoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`);
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           if (geoRes.ok) {
             const geoData = await geoRes.json();
-            locationName = geoData.timezone?.split('/')[1]?.replace(/_/g, ' ') || locationName;
+            const addr = geoData.address || {};
+            locationName = addr.city || addr.town || addr.village || addr.county || locationName;
           }
-        } catch {}
+        } catch { }
         try {
           const res = await fetch(`${API}/user/farm`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -109,7 +113,7 @@ export default function DashboardPage() {
       {/* Header */}
       <motion.div {...fadeUp} className="flex items-center justify-between pt-2">
         <div>
-          <p className="text-gray-400 text-sm">Good {getTimeOfDay()},</p>
+          <p className="text-gray-400 text-sm">{t.welcome},</p>
           <h1 className="font-['Outfit'] text-2xl font-bold text-gray-900">{firstName}</h1>
         </div>
         <Badge className="bg-green-50 text-green-700 border border-green-200 text-xs gap-1 font-medium">
@@ -193,10 +197,10 @@ export default function DashboardPage() {
         <motion.div {...fadeUp}>
           <Card className="rounded-2xl border border-gray-100 shadow-sm" data-testid="soil-card">
             <CardContent className="p-4">
-              <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 tracking-wide">SOIL PROFILE</h3>
+              <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 tracking-wide">{t.soilProfile}</h3>
               <div className="grid grid-cols-3 gap-2">
                 <div className="text-center p-2.5 rounded-xl bg-green-50">
-                  <p className="text-[10px] text-gray-500 mb-0.5">pH Level</p>
+                  <p className="text-[10px] text-gray-500 mb-0.5">{t.phLevel}</p>
                   <p className="text-lg font-bold text-green-700">{user.soil_profile.ph}</p>
                 </div>
                 <div className="text-center p-2.5 rounded-xl bg-gray-50">
@@ -228,7 +232,9 @@ export default function DashboardPage() {
                   <div className={`w-10 h-10 rounded-xl ${action.bg} flex items-center justify-center mb-2.5`}>
                     <action.icon size={20} className={action.iconColor} />
                   </div>
-                  <h3 className="font-semibold text-sm text-gray-900 mb-0.5">{action.label}</h3>
+                  <h3 className="font-semibold text-sm text-gray-900 mb-0.5">
+                    {action.id === 'suggest' ? t.suggestionsTitle : action.id === 'scan' ? t.scanTitle : action.id === 'chat' ? t.aiChatTitle : action.label}
+                  </h3>
                   <p className="text-[11px] text-gray-400">{action.desc}</p>
                 </CardContent>
               </Card>

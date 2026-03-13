@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { MapPin, Edit3, Save, LogOut, Sprout, Globe, Leaf, Droplets, Mountain, User as UserIcon, Loader2, Navigation } from 'lucide-react';
+import { getT } from '@/utils/translations';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -21,6 +22,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [language, setLanguage] = useState('en');
+  const t = getT(user?.language);
 
   useEffect(() => {
     if (user) { setFarmName(user.farm_info?.farm_name || ''); setFarmSize(user.farm_info?.farm_size || ''); setCrops(user.farm_info?.crops || []); setLanguage(user.language || 'en'); }
@@ -47,7 +49,7 @@ export default function ProfilePage() {
         try {
           const geoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`);
           if (geoRes.ok) { const d = await geoRes.json(); locationName = d.timezone?.split('/')[1]?.replace(/_/g, ' ') || locationName; }
-        } catch {}
+        } catch { }
         try {
           const res = await fetch(`${API}/user/farm`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -73,7 +75,7 @@ export default function ProfilePage() {
 
   const changeLanguage = async (lang) => {
     setLanguage(lang);
-    try { await fetch(`${API}/user/language`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ language: lang }) }); } catch {}
+    try { await fetch(`${API}/user/language`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ language: lang }) }); } catch { }
   };
 
   return (
@@ -113,7 +115,7 @@ export default function ProfilePage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
           <Card className="rounded-2xl border border-gray-100 shadow-sm" data-testid="soil-profile-card">
             <CardContent className="p-5">
-              <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 flex items-center gap-2 tracking-wide"><Mountain size={14} /> SOIL PROFILE</h3>
+              <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 flex items-center gap-2 tracking-wide"><Mountain size={14} /> {t.soilProfile}</h3>
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="p-3 rounded-xl bg-green-50 border border-green-100">
                   <p className="text-[10px] text-gray-400 mb-0.5">pH Level</p>
@@ -144,10 +146,10 @@ export default function ProfilePage() {
         <Card className="rounded-2xl border border-gray-100 shadow-sm" data-testid="farm-info-card">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 flex items-center gap-2 tracking-wide"><Leaf size={14} /> FARM INFO</h3>
+              <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 flex items-center gap-2 tracking-wide"><Leaf size={14} /> {t.farmInfo}</h3>
               <Button data-testid="edit-farm-btn" size="sm" onClick={() => editing ? saveFarmInfo() : setEditing(true)} disabled={saving}
                 className="h-8 rounded-lg bg-gray-50 text-gray-600 text-xs hover:bg-gray-100 border border-gray-100 gap-1.5">
-                {editing ? <><Save size={12} /> Save</> : <><Edit3 size={12} /> Edit</>}
+                {editing ? <><Save size={12} /> {t.save}</> : <><Edit3 size={12} /> {t.edit}</>}
               </Button>
             </div>
             {editing ? (
@@ -190,21 +192,32 @@ export default function ProfilePage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
         <Card className="rounded-2xl border border-gray-100 shadow-sm" data-testid="language-card">
           <CardContent className="p-5">
-            <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 flex items-center gap-2 tracking-wide"><Globe size={14} /> LANGUAGE</h3>
-            <div className="flex gap-2">
-              <button data-testid="lang-en" onClick={() => changeLanguage('en')} className={`flex-1 p-3 rounded-xl text-center transition-all ${language === 'en' ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
-                <p className="text-sm font-semibold">English</p>
-              </button>
-              <button data-testid="lang-hi" onClick={() => changeLanguage('hi')} className={`flex-1 p-3 rounded-xl text-center transition-all ${language === 'hi' ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
-                <p className="text-sm font-semibold">Hindi</p>
-              </button>
+            <h3 className="font-['Outfit'] text-xs font-semibold text-gray-400 mb-3 flex items-center gap-2 tracking-wide"><Globe size={14} /> {t.language}</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { code: 'en', label: 'English' },
+                { code: 'hi', label: 'Hindi' },
+                { code: 'ta', label: 'Tamil' },
+                { code: 'te', label: 'Telugu' },
+                { code: 'ml', label: 'Malayalam' },
+                { code: 'mr', label: 'Marathi' }
+              ].map(lang => (
+                <button
+                  key={lang.code}
+                  data-testid={`lang-${lang.code}`}
+                  onClick={() => changeLanguage(lang.code)}
+                  className={`p-3 rounded-xl text-center transition-all ${language === lang.code ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}
+                >
+                  <p className="text-sm font-semibold">{lang.label}</p>
+                </button>
+              ))}
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
       <Button data-testid="logout-btn" onClick={logout} variant="outline" className="w-full h-12 rounded-xl border-red-200 text-red-500 hover:bg-red-50 font-semibold gap-2">
-        <LogOut size={16} /> Sign Out
+        <LogOut size={16} /> {t.signOut}
       </Button>
       <div className="h-8" />
     </div>

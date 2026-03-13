@@ -66,15 +66,13 @@ export function AuthProvider({ children }) {
   };
 
   const loginWithGoogle = () => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = window.location.origin + '/dashboard';
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+    alert("Google Login is disabled. Please use Email/Password.");
   };
 
   const logout = async () => {
     try {
       await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-    } catch {}
+    } catch { }
     setUser(null);
   };
 

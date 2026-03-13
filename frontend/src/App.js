@@ -9,6 +9,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import WeatherPage from '@/pages/WeatherPage';
 import ChatPage from '@/pages/ChatPage';
 import DiseaseScannerPage from '@/pages/DiseaseScannerPage';
+import SoilScannerPage from '@/pages/SoilScannerPage';
 import CommunityPage from '@/pages/CommunityPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SuggestionsPage from '@/pages/SuggestionsPage';
@@ -52,6 +53,7 @@ function AppRouter() {
       <Route path="/weather" element={<ProtectedRoute><WeatherPage /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
       <Route path="/disease" element={<ProtectedRoute><DiseaseScannerPage /></ProtectedRoute>} />
+      <Route path="/soil" element={<ProtectedRoute><SoilScannerPage /></ProtectedRoute>} />
       <Route path="/suggestions" element={<ProtectedRoute><SuggestionsPage /></ProtectedRoute>} />
       <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

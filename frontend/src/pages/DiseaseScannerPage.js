@@ -5,11 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Camera, Upload, Loader2, AlertTriangle, CheckCircle2, Leaf, RotateCcw } from 'lucide-react';
+import { getT } from '@/utils/translations';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function DiseaseScannerPage() {
+  const { user } = useAuth();
+  const t = getT(user?.language);
+
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -45,8 +49,8 @@ export default function DiseaseScannerPage() {
   return (
     <div className="p-4 space-y-5" data-testid="disease-scanner-page">
       <div className="pt-2">
-        <h1 className="font-['Outfit'] text-xl font-bold text-gray-900">Disease Scanner</h1>
-        <p className="text-xs text-gray-400 mt-0.5">AI-powered plant health analysis</p>
+        <h1 className="font-['Outfit'] text-xl font-bold text-gray-900">{t.scanTitle}</h1>
+        <p className="text-xs text-gray-400 mt-0.5">{t.scanDesc}</p>
       </div>
 
       {!preview ? (
@@ -67,7 +71,7 @@ export default function DiseaseScannerPage() {
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
                 <Button data-testid="upload-btn" onClick={() => fileInputRef.current?.click()} variant="outline"
                   className="flex-1 h-12 rounded-xl border-gray-200 text-gray-700 font-semibold gap-2 hover:bg-gray-50">
-                  <Upload size={18} /> Upload
+                  <Upload size={18} /> {t.uploadImage}
                 </Button>
               </div>
             </CardContent>
@@ -83,7 +87,7 @@ export default function DiseaseScannerPage() {
                   <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-2">
                       <Loader2 size={28} className="animate-spin text-green-600" />
-                      <span className="text-sm text-gray-700 font-medium">Analyzing...</span>
+                      <span className="text-sm text-gray-700 font-medium">{t.analyzing}</span>
                     </div>
                   </div>
                 )}
@@ -144,7 +148,7 @@ export default function DiseaseScannerPage() {
               <Card className="rounded-2xl border border-red-200"><CardContent className="p-4 text-center"><AlertTriangle size={24} className="text-red-500 mx-auto mb-2" /><p className="text-sm text-red-500">{result.error}</p></CardContent></Card>
             )}
             <Button data-testid="scan-again-btn" onClick={reset} variant="outline" className="w-full h-11 rounded-xl border-gray-200 text-gray-600 gap-2">
-              <RotateCcw size={15} /> Scan Another Plant
+              <RotateCcw size={15} /> {t.scanAnother}
             </Button>
           </motion.div>
         </AnimatePresence>

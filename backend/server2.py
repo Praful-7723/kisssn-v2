@@ -22,7 +22,7 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
 db: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def _get_one(table: str, col: str, val: str):
+def _get_one(table, col, val):
     res = db.table(table).select("*").eq(col, val).execute()
     return res.data[0] if res.data else None
 
@@ -124,12 +124,12 @@ async def auth_session(request: Request, response: Response):
         db.table("users").insert(user).execute()
         user = _get_one("users", "user_id", user_id)
     session_token = data.get("session_token", str(uuid.uuid4()))
-    db.table("user_sessions").insert({
+    await db.user_sessions.insert_one({
         "user_id": user["user_id"],
         "session_token": session_token,
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat()
-    }).execute()
+    })
     response.set_cookie(
         key="session_token", value=session_token,
         httponly=True, secure=True, samesite="none", path="/", max_age=7*24*60*60
@@ -158,17 +158,17 @@ async def register(input_data: RegisterInput, response: Response):
     }
     db.table("users").insert(user).execute()
     session_token = str(uuid.uuid4())
-    db.table("user_sessions").insert({
+    await db.user_sessions.insert_one({
         "user_id": user_id,
         "session_token": session_token,
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat()
-    }).execute()
+    })
     response.set_cookie(
         key="session_token", value=session_token,
         httponly=True, secure=True, samesite="none", path="/", max_age=7*24*60*60
     )
-    user_response = {k: v for k, v in user.items() if k != "password_hash"}
+    user_response = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
     return user_response
 
 @api_router.post("/auth/login")
@@ -179,23 +179,23 @@ async def login(input_data: LoginInput, response: Response):
     if not bcrypt.checkpw(input_data.password.encode(), user["password_hash"].encode()):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     session_token = str(uuid.uuid4())
-    db.table("user_sessions").insert({
+    await db.user_sessions.insert_one({
         "user_id": user["user_id"],
         "session_token": session_token,
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat()
-    }).execute()
+    })
     response.set_cookie(
         key="session_token", value=session_token,
         httponly=True, secure=True, samesite="none", path="/", max_age=7*24*60*60
     )
-    user_response = {k: v for k, v in user.items() if k != "password_hash"}
+    user_response = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
     return user_response
 
 @api_router.get("/auth/me")
 async def auth_me(request: Request):
     user = await get_current_user(request)
-    user_response = {k: v for k, v in user.items() if k != "password_hash"}
+    user_response = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
     return user_response
 
 @api_router.post("/auth/logout")
@@ -216,22 +216,23 @@ async def logout(request: Request, response: Response):
 async def update_farm(farm_data: FarmInfoUpdate, request: Request):
     user = await get_current_user(request)
     update_dict = {k: v for k, v in farm_data.model_dump().items() if v is not None}
-    location_update = user.get("location", {})
+    location_update = {}
     if farm_data.location_lat is not None:
         location_update["lat"] = farm_data.location_lat
     if farm_data.location_lon is not None:
         location_update["lon"] = farm_data.location_lon
     if farm_data.location_name:
         location_update["name"] = farm_data.location_name
-    
-    farm_info = user.get("farm_info", {})
     farm_update = {k: v for k, v in update_dict.items() if not k.startswith("location_")}
+    set_dict = {}
     if farm_update:
         for k, v in farm_update.items():
-            farm_info[k] = v
-
-    set_dict = {"farm_info": farm_info, "location": location_update}
-    db.table("users").update(set_dict).eq("user_id", user["user_id"]).execute()
+            set_dict[f"farm_info.{k}"] = v
+    if location_update:
+        for k, v in location_update.items():
+            set_dict[f"location.{k}"] = v
+    if set_dict:
+        db.table("users").update(set_dict).eq("user_id", user["user_id"]).execute()
     updated_user = _get_one("users", "user_id", user["user_id"])
     return {k: v for k, v in updated_user.items() if k != "password_hash"}
 
@@ -303,19 +304,30 @@ async def estimate_soil(request: Request):
                     soil_profile["soil_type"] = "Clay Loam"
                 else:
                     soil_profile["soil_type"] = "Loam"
-                db.table("users").update({"soil_profile": soil_profile}).eq("user_id", user["user_id"]).execute()
+                await db.users.update_one(
+                    {"user_id": user["user_id"]},
+                    {"$set": {"soil_profile": soil_profile}}
+                )
                 return soil_profile
             else:
+                # Fallback estimation based on region
                 soil_profile = _estimate_soil_by_region(lat, lon)
-                db.table("users").update({"soil_profile": soil_profile}).eq("user_id", user["user_id"]).execute()
+                await db.users.update_one(
+                    {"user_id": user["user_id"]},
+                    {"$set": {"soil_profile": soil_profile}}
+                )
                 return soil_profile
     except Exception as e:
         logger.error(f"SoilGrids API error: {e}")
         soil_profile = _estimate_soil_by_region(lat, lon)
-        db.table("users").update({"soil_profile": soil_profile}).eq("user_id", user["user_id"]).execute()
+        await db.users.update_one(
+            {"user_id": user["user_id"]},
+            {"$set": {"soil_profile": soil_profile}}
+        )
         return soil_profile
 
 def _estimate_soil_by_region(lat, lon):
+    """Fallback soil estimation based on Indian geography"""
     if 8 <= lat <= 13:
         return {"soil_type": "Red Laterite", "ph": 6.2, "source": "regional_estimate", "lat": lat, "lon": lon}
     elif 13 <= lat <= 20:
@@ -326,110 +338,33 @@ def _estimate_soil_by_region(lat, lon):
         return {"soil_type": "Loam", "ph": 6.8, "source": "regional_estimate", "lat": lat, "lon": lon}
 
 @api_router.post("/soil/analyze-image")
-async def analyze_soil_image(request: Request, file: UploadFile = File(...), ph: Optional[str] = Form(None), language: Optional[str] = Form("en")):
+async def analyze_soil_image(request: Request, file: UploadFile = File(...)):
     user = await get_current_user(request)
-    lang_name = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "ml": "Malayalam", "mr": "Marathi"}.get(language, "English")
     image_bytes = await file.read()
     image_b64 = base64.b64encode(image_bytes).decode()
     try:
-        from ai_helpers import gemini_chat
-        sys_msg = f"""You are an expert soil scientist and agronomist. Analyze the soil image. 
-Context provided by user: The estimated geological pH is {ph if ph else 'unknown'}. 
-You MUST provide recommendations for fertilizer amounts specifically calculated per acre OR per cent.
-Output ONLY valid JSON.
-CRITICAL: ALL values inside the JSON, except keys themselves, MUST BE in the {lang_name} language."""
-        
-        user_msg = "Analyze this soil. Output JSON with these exact keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_level', 'fertilizer_recommendation', 'recommended_crops'."
-        
-        response = await gemini_chat(sys_msg, user_msg, image_b64)
-        
+        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"soil_analyze_{uuid.uuid4().hex[:8]}",
+            system_message="You are an expert soil scientist. Analyze the soil image and provide: soil_type, estimated_ph_range (min-max), texture, color_description, moisture_level, and recommendations. Respond ONLY in valid JSON format."
+        )
+        chat.with_model("gemini", "gemini-2.5-flash")
+        image_content = ImageContent(image_base64=image_b64)
+        response = await chat.send_message(UserMessage(
+            text="Analyze this soil image. Determine the soil type, estimate pH range, describe texture and moisture. Respond in JSON.",
+            image_contents=[image_content]
+        ))
         try:
             clean_response = response.strip()
             if clean_response.startswith("```"):
                 clean_response = clean_response.split("\n", 1)[1].rsplit("```", 1)[0]
-            if clean_response.startswith("json"):
-                clean_response = clean_response[4:].strip()
             result = json.loads(clean_response)
         except json.JSONDecodeError:
-            result = {"soil_type": "Unknown", "estimated_ph_range": "Unknown", "error": "Failed to parse JSON", "raw": response}
-            
+            result = {"analysis": response, "soil_type": "Unknown", "estimated_ph_range": "6.0-7.0"}
         return result
     except Exception as e:
         logger.error(f"Soil image analysis error: {e}")
-        return {"error": str(e), "soil_type": "Unknown", "estimated_ph_range": "6.0-7.0"}
-
-@api_router.post("/soil/analyze-comprehensive")
-async def analyze_soil_comprehensive(
-    request: Request, 
-    image: Optional[UploadFile] = File(None), 
-    audio: Optional[UploadFile] = File(None), 
-    ph: Optional[str] = Form(None), 
-    language: Optional[str] = Form("en")
-):
-    user = await get_current_user(request)
-    lang_name = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "ml": "Malayalam", "mr": "Marathi"}.get(language, "English")
-    
-    image_b64 = None
-    if image and image.size > 0:
-        image_bytes = await image.read()
-        image_b64 = base64.b64encode(image_bytes).decode()
-        
-    audio_b64 = None
-    if audio and audio.size > 0:
-        audio_bytes = await audio.read()
-        audio_b64 = base64.b64encode(audio_bytes).decode()
-
-    if not image_b64 and not audio_b64:
-        return {"error": "Please provide an image or an audio description.", "soil_type": "Unknown", "estimated_ph_range": "Unknown"}
-
-    try:
-        from ai_helpers import gemini_chat, sarvam_tts
-        sys_msg = f"""You are an expert soil scientist and Indian agronomist named Kissan AI.
-Context provided by user: The estimated geological pH is {ph if ph else 'unknown'}. 
-You will receive an image of soil AND/OR a voice note describing a soil related issue. Keep your recommendations highly practical.
-You MUST provide a comprehensive analysis including:
-1. Soil characteristics.
-2. Recommended fertilizers (MUST include amounts specifically calculated per acre OR per cent).
-3. Recommended crops with the exact number of days they take to grow/harvest based on climate context.
-Output ONLY valid JSON.
-CRITICAL: ALL values inside the JSON, except keys themselves, MUST BE translated to the {lang_name} language.
-Use these EXACT keys: 'soil_type', 'estimated_ph_range', 'texture', 'moisture_level', 'fertilizer_recommendation', 'recommended_crops', 'summary_message'"""
-        
-        user_msg = "Analyze this input. Output JSON with the required keys."
-        
-        response = await gemini_chat(sys_msg, user_msg, image_b64=image_b64, audio_b64=audio_b64)
-        
-        try:
-            clean_response = response.strip()
-            if clean_response.startswith("```"):
-                clean_response = clean_response.split("\n", 1)[1].rsplit("```", 1)[0]
-            if clean_response.startswith("json"):
-                clean_response = clean_response[4:].strip()
-            result = json.loads(clean_response)
-        except json.JSONDecodeError:
-            result = {"soil_type": "Unknown", "estimated_ph_range": "Unknown", "error": "Failed to parse JSON", "raw": response}
-            
-        # Generating Sarvam Audio from the 'summary_message' or 'fertilizer_recommendation'
-        text_to_speak = result.get('summary_message', "")
-        if not text_to_speak and result.get('fertilizer_recommendation'):
-            if isinstance(result['fertilizer_recommendation'], list):
-                text_to_speak = ", ".join(result['fertilizer_recommendation'])
-            else:
-                text_to_speak = str(result['fertilizer_recommendation'])
-        
-        if text_to_speak:
-            # slice to not break TTS
-            if len(text_to_speak) > 300:
-                text_to_speak = text_to_speak[:297] + "..."
-            try:
-                audio_res = await sarvam_tts(text_to_speak, target_lang=language)
-                result["audio_url"] = f"data:audio/wav;base64,{audio_res}"
-            except Exception as tts_e:
-                logger.error(f"TTS error during comprehensive analysis: {tts_e}")
-                
-        return result
-    except Exception as e:
-        logger.error(f"Comprehensive analysis error: {e}")
         return {"error": str(e), "soil_type": "Unknown", "estimated_ph_range": "6.0-7.0"}
 
 # ============ WEATHER ROUTES ============
@@ -455,14 +390,17 @@ async def get_weather(lat: float, lon: float):
             current = data.get("current", {})
             hourly = data.get("hourly", {})
             daily = data.get("daily", {})
+            # Calculate spraying conditions
             temp = current.get("temperature_2m", 20)
             humidity = current.get("relative_humidity_2m", 50)
             wind = current.get("wind_speed_10m", 0)
             precip = current.get("precipitation", 0)
+            # Delta T calculation (simplified)
             dew_point_temps = hourly.get("dew_point_2m", [])
             current_dew_point = dew_point_temps[0] if dew_point_temps else temp - 5
             delta_t = temp - current_dew_point
             spraying = _calculate_spraying_conditions(temp, humidity, wind, precip, delta_t)
+            # Build hourly spraying planner (next 24h)
             hourly_planner = []
             for i in range(min(24, len(hourly.get("time", [])))):
                 h_temp = hourly.get("temperature_2m", [0]*(i+1))[i]
@@ -564,121 +502,63 @@ def _weather_code_to_desc(code):
 async def chat_message(input_data: ChatMessageInput, request: Request):
     user = await get_current_user(request)
     user_id = user["user_id"]
-    
-    lang = input_data.language or user.get("language", "en")
-    lang_map = {"en": "en-IN", "hi": "hi-IN", "ta": "ta-IN", "te": "te-IN", "ml": "ml-IN", "mr": "mr-IN"}
-    lang_name_map = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "ml": "Malayalam", "mr": "Marathi"}
-    sarvam_lang = lang_map.get(lang, "en-IN")
-    target_lang_name = lang_name_map.get(lang, "English")
-    
-    original_message = input_data.message
-
-    # Log user message
+    # Store user message
     msg_id = str(uuid.uuid4())
-    db.table("chat_messages").insert({
+    await db.chat_messages.insert_one({
         "message_id": msg_id,
         "user_id": user_id,
         "role": "user",
-        "content": original_message,
+        "content": input_data.message,
         "created_at": datetime.now(timezone.utc).isoformat()
-    }).execute()
-    
-    recent_res = db.table("chat_messages").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(10).execute()
-    recent = recent_res.data if recent_res.data else []
+    })
+    # Get recent history for context
+    recent = db.table("chat_messages").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(10).execute().data
     recent.reverse()
     context = "\n".join([f"{'User' if m['role']=='user' else 'AI'}: {m['content']}" for m in recent[:-1]])
-    
+    # Build system message with user context
     farm_info = user.get("farm_info", {})
     soil = user.get("soil_profile", {})
     location = user.get("location", {})
     system_msg = f"""You are Kissan AI, an expert agricultural advisor for Indian farmers. 
 You provide advice on crops, fertilizers, irrigation, pest control, and market insights.
-Be practical, concise, and helpful. Use simple language and clear sentences.
-Do not use very long paragraphs.
-
-CRITICAL INSTRUCTION: You MUST reply entirely in {target_lang_name} language.
+Be practical, concise, and helpful. Use simple language.
 
 Farmer's Profile:
-- Location: {location.get('name', 'Unknown')}
-- Soil Type: {soil.get('soil_type', 'Unknown')}
+- Location: {location.get('name', 'Unknown')} ({location.get('lat', 'N/A')}, {location.get('lon', 'N/A')})
+- Soil Type: {soil.get('soil_type', 'Unknown')}, pH: {soil.get('ph', 'Unknown')}
 - Crops: {', '.join(farm_info.get('crops', [])) if farm_info.get('crops') else 'Not specified'}
+- Farm Size: {farm_info.get('farm_size', 'Unknown')}
 
-Previous context:
+Previous conversation:
 {context}"""
-
-    # 2. Call LLM with original Message directly
     try:
-        from ai_helpers import gemini_chat
-        ai_response_target = await gemini_chat(system_msg, original_message)
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"kissan_chat_{uuid.uuid4().hex[:8]}",
+            system_message=system_msg
+        )
+        chat.with_model("gemini", "gemini-2.5-flash")
+        ai_response = await chat.send_message(UserMessage(text=input_data.message))
     except Exception as e:
         logger.error(f"AI Chat error: {e}")
-        ai_response_target = "I'm having trouble processing your request right now. Please try again."
-
-    # 4. Save to db using the TARGET language as the AI's content
+        ai_response = "I'm having trouble processing your request right now. Please try again."
+    # Store AI response
     ai_msg_id = str(uuid.uuid4())
-    db.table("chat_messages").insert({
+    await db.chat_messages.insert_one({
         "message_id": ai_msg_id,
         "user_id": user_id,
         "role": "assistant",
-        "content": ai_response_target,
+        "content": ai_response,
         "created_at": datetime.now(timezone.utc).isoformat()
-    }).execute()
-    
-    # 5. Provide Audio Chunks via TTS Pipeline
-    import re
-    # Match sentences by punctuation
-    sentences = re.split(r'(?<=[.!?|।\n])\s+', ai_response_target)
-    chunks = []
-    current_chunk = ""
-    # Max chunk size logic for Sarvam (keep chunks < 350 chars)
-    for s in sentences:
-        if not s.strip():
-            continue
-        if len(current_chunk) + len(s) < 350:
-            current_chunk += " " + s
-        else:
-            if current_chunk.strip():
-                chunks.append(current_chunk.strip())
-            # if a single sentence is super long, break it by words or just accept it might fail TTS
-            # but ideally < 350
-            if len(s) >= 350:
-                s = s[:340] + "..."
-            current_chunk = s
-
-    if current_chunk.strip():
-        chunks.append(current_chunk.strip())
-
-    if not chunks: 
-        chunks = [ai_response_target[:340]]
-        
-    audio_chunks = []
-    try:
-        from ai_helpers import sarvam_tts
-        for c in chunks:
-            try:
-                # sarvam_tts uses the base language code e.g. "hi" from "hi-IN"
-                lang_code = lang
-                audio_b64 = await sarvam_tts(text=c, target_lang=lang_code)
-                if audio_b64:
-                    audio_chunks.append(audio_b64)
-            except Exception as tts_e:
-                logger.error(f"TTS minor error passing chunk: {tts_e}")
-    except Exception as e:
-        logger.error(f"TTS Chunk generation error: {e}")
-        
-    return {
-        "message_id": ai_msg_id, 
-        "content": ai_response_target, 
-        "primary_text": ai_response_target,
-        "audio_chunks": audio_chunks,
-        "role": "assistant"
-    }
+    })
+    return {"message_id": ai_msg_id, "content": ai_response, "role": "assistant"}
 
 @api_router.get("/chat/history")
 async def get_chat_history(request: Request):
     user = await get_current_user(request)
-    messages_res = db.table("chat_messages").select("*").eq("user_id", user["user_id"]).order("created_at", desc=False).limit(50).execute()
-    return messages_res.data if messages_res.data else []
+    messages = db.table("chat_messages").select("*").eq("user_id", user["user_id"]).order("created_at", desc=False).limit(50).execute().data
+    return messages
 
 @api_router.delete("/chat/history")
 async def clear_chat_history(request: Request):
@@ -691,27 +571,14 @@ async def clear_chat_history(request: Request):
 @api_router.post("/disease/scan")
 async def scan_disease(request: Request, file: UploadFile = File(...)):
     user = await get_current_user(request)
-    
-    # 1. Validation
-    if file.size and file.size > 10 * 1024 * 1024:
-        return {"error": "File size exceeds 10MB limit.", "health_status": "Error", "disease_name": "Upload failed", "plant_name": "Unknown", "confidence": 0, "urgency": "high"}
-    if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
-        return {"error": "Unsupported file format. Please use JPG, PNG, or WebP.", "health_status": "Error", "disease_name": "Upload failed", "plant_name": "Unknown", "confidence": 0, "urgency": "high"}
-        
+    image_bytes = await file.read()
+    image_b64 = base64.b64encode(image_bytes).decode()
     try:
-        image_bytes = await file.read()
-        image_b64 = base64.b64encode(image_bytes).decode()
-    except Exception as e:
-        logger.error(f"Image read error: {e}")
-        return {"error": "Failed to read image file.", "health_status": "Error", "disease_name": "Upload failed", "plant_name": "Unknown", "confidence": 0, "urgency": "high"}
-        
-    # 2. Upload and API retry mechanism
-    max_retries = 3
-    result = None
-    for attempt in range(max_retries):
-        try:
-            from ai_helpers import gemini_chat
-            sys_msg = """You are an expert plant pathologist. Analyze the plant image and identify any diseases or health issues.
+        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"disease_scan_{uuid.uuid4().hex[:8]}",
+            system_message="""You are an expert plant pathologist. Analyze the plant image and identify any diseases or health issues.
 Respond in JSON format with these fields:
 - plant_name: identified plant
 - health_status: "Healthy", "Mild Issue", "Diseased", or "Critical"
@@ -723,37 +590,37 @@ Respond in JSON format with these fields:
 - prevention: prevention tips
 - urgency: "low", "medium", "high", or "critical"
 Respond ONLY in valid JSON."""
-            user_msg = "Analyze this plant image for diseases or health issues. Identify the plant and any problems."
-            response = await gemini_chat(system_prompt=sys_msg, user_prompt=user_msg, image_b64=image_b64)
-            
+        )
+        chat.with_model("gemini", "gemini-2.5-flash")
+        image_content = ImageContent(image_base64=image_b64)
+        response = await chat.send_message(UserMessage(
+            text="Analyze this plant image for diseases or health issues. Identify the plant and any problems.",
+            image_contents=[image_content]
+        ))
+        try:
             clean = response.strip()
             if clean.startswith("```"):
                 clean = clean.split("\n", 1)[1].rsplit("```", 1)[0]
             result = json.loads(clean)
-            break
-        except Exception as e:
-            logger.warning(f"Disease scan attempt {attempt + 1} failed: {e}")
-            if attempt == max_retries - 1:
-                logger.error("All retries failed for disease scan.")
-                return {"error": "AI analysis failed after multiple attempts. Please try to re-upload the image.", "health_status": "Error", "disease_name": "Scan failed", "plant_name": "Unknown", "confidence": 0, "urgency": "high"}
-                
-    try:
-        db.table("disease_scans").insert({
+        except json.JSONDecodeError:
+            result = {"analysis": response, "health_status": "Unknown", "disease_name": "Analysis pending"}
+        # Store scan in history
+        await db.disease_scans.insert_one({
             "scan_id": str(uuid.uuid4()),
             "user_id": user["user_id"],
             "result": result,
             "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        })
         return result
     except Exception as e:
-        logger.error(f"Database insertion error: {e}")
-        return {"error": "Failed to save results. Analysis complete but not saved.", "health_status": "Error", "disease_name": "System error", "plant_name": "Unknown", "confidence": 0, "urgency": "high"}
+        logger.error(f"Disease scan error: {e}")
+        return {"error": str(e), "health_status": "Error", "disease_name": "Scan failed"}
 
 @api_router.get("/disease/history")
 async def get_scan_history(request: Request):
     user = await get_current_user(request)
-    scans_res = db.table("disease_scans").select("*").eq("user_id", user["user_id"]).order("created_at", desc=True).limit(20).execute()
-    return scans_res.data if scans_res.data else []
+    scans = db.table("disease_scans").select("*").eq("user_id", user["user_id"]).order("created_at", desc=True).limit(20).execute().data
+    return scans
 
 # ============ VOICE / TRANSLATION ROUTES ============
 
@@ -763,11 +630,12 @@ async def translate_text(request: Request):
     text = body.get("text", "")
     target_lang = body.get("target_language", "hi-IN")
     try:
-        from ai_helpers import sarvam_translate
-        # extract just the language code (like "hi" from "hi-IN" or just pass it)
-        lang_code = target_lang.split("-")[0] if "-" in target_lang else target_lang
-        translated = await sarvam_translate(text, source="en", target=lang_code)
-        return {"translated_text": translated, "source": text, "target_language": target_lang}
+        from sarvamai import SarvamAI
+        sarvam = SarvamAI(api_subscription_key=SARVAM_API_KEY)
+        response = sarvam.translation.translate(
+            text=text, target_language_code=target_lang, source_language_code="auto"
+        )
+        return {"translated_text": response.translated_text, "source": text, "target_language": target_lang}
     except Exception as e:
         logger.error(f"Translation error: {e}")
         return {"translated_text": text, "error": str(e)}
@@ -778,9 +646,13 @@ async def text_to_speech(request: Request):
     text = body.get("text", "")
     language = body.get("language", "hi-IN")
     try:
-        from ai_helpers import sarvam_tts
-        lang_code = language.split("-")[0] if "-" in language else language
-        audio_b64 = await sarvam_tts(text=text, target_lang=lang_code)
+        from sarvamai import SarvamAI
+        sarvam = SarvamAI(api_subscription_key=SARVAM_API_KEY)
+        audio = sarvam.text_to_speech.convert(
+            text=text, target_language_code=language,
+            model="bulbul:v3", speaker="shubh"
+        )
+        audio_b64 = audio.audios[0] if audio.audios else ""
         return {"audio_base64": audio_b64, "language": language}
     except Exception as e:
         logger.error(f"TTS error: {e}")
@@ -790,8 +662,8 @@ async def text_to_speech(request: Request):
 
 @api_router.get("/community/posts")
 async def get_community_posts(skip: int = 0, limit: int = 20):
-    posts_res = db.table("community_posts").select("*").order("created_at", desc=True).range(skip, skip + limit - 1).execute()
-    return posts_res.data if posts_res.data else []
+    posts = db.table("community_posts").select("*").order("created_at", desc=True).range(skip, skip + limit - 1).execute().data
+    return posts
 
 @api_router.post("/community/posts")
 async def create_community_post(input_data: CommunityPostInput, request: Request):
@@ -818,15 +690,19 @@ async def like_post(post_id: str, request: Request):
     post = _get_one("community_posts", "post_id", post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    
-    liked_by = post.get("liked_by", [])
-    if user["user_id"] in liked_by:
-        new_liked_by = [u for u in liked_by if u != user["user_id"]]
-        db.table("community_posts").update({"liked_by": new_liked_by, "likes": post.get("likes", 1) - 1}).eq("post_id", post_id).execute()
+    if user["user_id"] in post.get("liked_by", []):
+        post = _get_one("community_posts", "post_id", post_id)
+        if post and user["user_id"] in post.get("liked_by", []):
+            new_likes = post.get("likes", 1) - 1
+            new_liked_by = [u for u in post.get("liked_by", []) if u != user["user_id"]]
+            db.table("community_posts").update({"liked_by": new_liked_by, "likes": new_likes}).eq("post_id", post_id).execute()
         return {"liked": False}
     else:
-        new_liked_by = liked_by + [user["user_id"]]
-        db.table("community_posts").update({"liked_by": new_liked_by, "likes": post.get("likes", 0) + 1}).eq("post_id", post_id).execute()
+        post = _get_one("community_posts", "post_id", post_id)
+        if post and user["user_id"] not in post.get("liked_by", []):
+            new_likes = post.get("likes", 0) + 1
+            new_liked_by = post.get("liked_by", []) + [user["user_id"]]
+            db.table("community_posts").update({"liked_by": new_liked_by, "likes": new_likes}).eq("post_id", post_id).execute()
         return {"liked": True}
 
 @api_router.post("/community/posts/{post_id}/comment")
@@ -853,26 +729,26 @@ async def get_recommendations(request: Request):
     user = await get_current_user(request)
     body = await request.json()
     rec_type = body.get("type", "general")
-    language = body.get("language", user.get("language", "en"))
-    
-    lang_name = {"en": "English", "hi": "Hindi", "ta": "Tamil", "te": "Telugu", "ml": "Malayalam", "mr": "Marathi"}.get(language, "English")
-    
     farm_info = user.get("farm_info", {})
     soil = user.get("soil_profile", {})
     location = user.get("location", {})
-    
     prompts = {
-        "crop": f"Recommend best crops for: Soil={soil.get('soil_type','Unknown')}, pH={soil.get('ph','Unknown')}, Location={location.get('name','India')}. Give top 5 crops, AND EXACTLY how many days each crop takes to be grown/harvested. Include the current climate context. Respond exclusively in {lang_name}.",
-        "fertilizer": f"Recommend fertilizer schedule for: Soil pH={soil.get('ph','Unknown')}, Type={soil.get('soil_type','Unknown')}, Crops={farm_info.get('crops',[])}. Respond exclusively in {lang_name}.",
-        "irrigation": f"Recommend irrigation plan for: Location={location.get('name','India')}, Crops={farm_info.get('crops',[])}. Respond exclusively in {lang_name}.",
-        "pest": f"Analyze pest risks for: Location={location.get('name','India')}, Season=current, Crops={farm_info.get('crops',[])}. Respond exclusively in {lang_name}.",
-        "general": f"Give a comprehensive farming advisory for: Soil={soil.get('soil_type','Unknown')}, pH={soil.get('ph','Unknown')}, Location={location.get('name','India')}, Crops={farm_info.get('crops',[])}. Respond exclusively in {lang_name}."
+        "crop": f"Recommend best crops for: Soil={soil.get('soil_type','Unknown')}, pH={soil.get('ph','Unknown')}, Location={location.get('name','India')}. Give top 5 with reasons.",
+        "fertilizer": f"Recommend fertilizer schedule for: Soil pH={soil.get('ph','Unknown')}, Type={soil.get('soil_type','Unknown')}, Crops={farm_info.get('crops',[])}.",
+        "irrigation": f"Recommend irrigation plan for: Location={location.get('name','India')}, Crops={farm_info.get('crops',[])}.",
+        "pest": f"Analyze pest risks for: Location={location.get('name','India')}, Season=current, Crops={farm_info.get('crops',[])}.",
+        "general": f"Give a comprehensive farming advisory for: Soil={soil.get('soil_type','Unknown')}, pH={soil.get('ph','Unknown')}, Location={location.get('name','India')}, Crops={farm_info.get('crops',[])}."
     }
     prompt = prompts.get(rec_type, prompts["general"])
     try:
-        from ai_helpers import gemini_chat
-        sys_msg = f"You are Kissan AI, an expert agricultural advisor. Provide practical, actionable advice. Be concise but thorough. CRITICAL INSTRUCTION: You MUST reply entirely in the {lang_name} language."
-        response = await gemini_chat(sys_msg, prompt)
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=GEMINI_API_KEY,
+            session_id=f"rec_{uuid.uuid4().hex[:8]}",
+            system_message="You are Kissan AI, an expert agricultural advisor. Provide practical, actionable advice. Be concise but thorough."
+        )
+        chat.with_model("gemini", "gemini-2.5-flash")
+        response = await chat.send_message(UserMessage(text=prompt))
         return {"recommendation": response, "type": rec_type}
     except Exception as e:
         logger.error(f"Recommendation error: {e}")
@@ -895,7 +771,9 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://tame-bikes-flow.loca.lt"],
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
