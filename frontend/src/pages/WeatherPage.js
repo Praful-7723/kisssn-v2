@@ -40,8 +40,9 @@ export default function WeatherPage() {
   const [sprayType, setSprayType] = useState('herbicide');
 
   const fetchWeather = useCallback(async () => {
-    const lat = user?.location?.lat || 13.0;
-    const lon = user?.location?.lon || 80.0;
+    const lat = user?.location?.lat;
+    const lon = user?.location?.lon;
+    if (!lat || !lon) { setLoading(false); return; }
     try {
       const res = await fetch(`${API}/weather?lat=${lat}&lon=${lon}`, { credentials: 'include' });
       if (res.ok) setWeather(await res.json());

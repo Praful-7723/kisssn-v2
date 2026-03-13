@@ -45,10 +45,14 @@ export default function ProfilePage() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
-        let locationName = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+        let locationName = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`; // Default to coordinates
         try {
-          const geoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`);
-          if (geoRes.ok) { const d = await geoRes.json(); locationName = d.timezone?.split('/')[1]?.replace(/_/g, ' ') || locationName; }
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const addr = geoData.address || {};
+            locationName = addr.city || addr.town || addr.village || addr.county || locationName;
+          }
         } catch { }
         try {
           const res = await fetch(`${API}/user/farm`, {
