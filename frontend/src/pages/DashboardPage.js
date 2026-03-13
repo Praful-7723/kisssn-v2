@@ -20,6 +20,12 @@ const weatherEmoji = {
   80: '🌦️', 81: '🌧️', 82: '🌧️', 95: '⛈️', 96: '⛈️', 99: '⛈️'
 };
 
+const SmartFixIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.94 14.94a1.5 1.5 0 0 0-2.12 0l-.88.88a1.5 1.5 0 0 1-2.12 0l-.88-.88a1.5 1.5 0 0 0-2.12 0"/><path d="M13.32 1.54a2 2 0 0 0-2.64 0L2.34 8.77A2 2 0 0 0 2 10.33V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-7.67a2 2 0 0 0-.34-1.56Z"/><circle cx="12" cy="13" r="5"/>
+  </svg>
+);
+
 
 
 export default function DashboardPage() {
@@ -98,6 +104,26 @@ export default function DashboardPage() {
     );
   };
 
+  const handleSmartFix = async () => {
+    setLocating(true);
+    try {
+      const res = await fetch(`${API}/user/smart-location`, { method: 'POST', credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        updateUser({ ...user, location: data.location });
+        toast.success(`Smart Fix: ${data.location.name}`);
+        fetchWeather();
+      } else {
+        toast.error('Smart fix failed. Using GPS.');
+        requestLocation();
+      }
+    } catch {
+      toast.error('Smart fix error');
+    } finally {
+      setLocating(false);
+    }
+  };
+
   const temp = weather?.current?.temperature ?? '--';
   const weatherDesc = weather?.current?.weather_desc ?? '';
   const weatherCode = weather?.current?.weather_code ?? 0;
@@ -159,6 +185,14 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5">
                   <MapPin size={13} className="text-green-600" />
                   <span className="text-sm text-gray-500">{user?.location?.name || 'Your Farm'}</span>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleSmartFix(); }}
+                    className="ml-2 p-1 rounded-md bg-green-50 text-green-600 hover:bg-green-100 transition-colors flex items-center gap-1"
+                    title="Smart Fix Location"
+                  >
+                    <SmartFixIcon />
+                    <span className="text-[10px] font-semibold">{t.smartFix || 'Smart Fix'}</span>
+                  </button>
                 </div>
                 <ChevronRight size={16} className="text-gray-300" />
               </div>

@@ -239,7 +239,66 @@ async def update_farm(farm_data: FarmInfoUpdate, request: Request):
 async def complete_onboarding(request: Request):
     user = await get_current_user(request)
     db.table("users").update({"onboarding_complete": True}).eq("user_id", user["user_id"]).execute()
-    return {"message": "Onboarding complete"}
+    return {"status": "success"}
+
+@api_router.post("/user/smart-location")
+async def smart_location_fix(request: Request):
+    user = await get_current_user(request)
+    client_ip = request.client.host
+    
+    # 1. Get rough location from IP
+    lat, lon, city = 13.0, 80.0, "Chennai" # Default fallbacks
+    try:
+        async with httpx.AsyncClient() as client:
+            # Use ip-api.com (free for low volume) or similar
+            # If request.client.host is '127.0.0.1', ip-api will use the server's IP, 
+            # so we should use a real IP if possible or tell ip-api to use the requester's IP.
+            # In production, request.headers.get("x-forwarded-for") is usually what we want.
+            real_ip = request.headers.get("x-forwarded-for", client_ip).split(",")[0]
+            geo_res = await client.get(f"http://ip-api.com/json/{real_ip}")
+            if geo_res.ok:
+                geo_data = geo_res.json()
+                if geo_data.get("status") == "success":
+                    lat = geo_data.get("lat", lat)
+                    lon = geo_data.get("lon", lon)
+                    city = geo_data.get("city", city)
+    except: pass
+
+    # 2. Use Gemini Search to pinpoint and get context
+    from ai_helpers import gemini_chat
+    sys_prompt = "You are a location and weather expert. Based on the provided IP-based city and coordinates, use Google Search to find the EXACT local village/area name and current weather/soil summary for this local spot. Pinpoint the location within 5km accuracy if possible."
+    user_prompt = f"Current IP Hint: {city} ({lat}, {lon}). Find the most specific area name (village/town) and current local agrarian context (weather/soil). Respond in JSON format with fields: 'location_name', 'lat', 'lon', 'weather_summary', 'soil_hint'."
+    
+    try:
+        response = await gemini_chat(sys_prompt, user_prompt, use_search=True)
+        # Extract JSON from response
+        clean = response.strip()
+        if "```" in clean:
+            clean = clean.split("```")[1].strip()
+            if clean.startswith("json"): clean = clean[4:].strip()
+        
+        loc_data = json.loads(clean)
+        final_lat = loc_data.get("lat", lat)
+        final_lon = loc_data.get("lon", lon)
+        final_name = loc_data.get("location_name", city)
+        
+        # Update user location
+        db.table("users").update({
+            "location": {"lat": final_lat, "lon": final_lon, "name": final_name}
+        }).eq("user_id", user["user_id"]).execute()
+        
+        return {
+            "status": "success",
+            "location": {"lat": final_lat, "lon": final_lon, "name": final_name},
+            "summary": loc_data.get("weather_summary", "Detected automatically via IP and AI Search.")
+        }
+    except Exception as e:
+        logger.error(f"Smart location error: {e}")
+        # Fallback to rough IP location if Gemini fails
+        db.table("users").update({
+            "location": {"lat": lat, "lon": lon, "name": city}
+        }).eq("user_id", user["user_id"]).execute()
+        return {"status": "fallback", "location": {"lat": lat, "lon": lon, "name": city}}
 
 @api_router.put("/user/language")
 async def update_language(request: Request):
@@ -596,7 +655,11 @@ async def chat_message(input_data: ChatMessageInput, request: Request):
     sarvam_lang = lang_map.get(lang, "en-IN")
     target_lang_name = lang_name_map.get(lang, "English")
     
+    # Force Gemini to use the target language by appending a strict instruction to the message
     original_message = input_data.message
+    if lang != 'en':
+        original_message += f"\n\n(IMPORTANT: Answer only in {target_lang_name})"
+
 
     # Log user message
     msg_id = str(uuid.uuid4())
@@ -621,7 +684,10 @@ You provide advice on crops, fertilizers, irrigation, pest control, and market i
 Be practical, concise, and helpful. Use simple language and clear sentences.
 Do not use very long paragraphs.
 
-CRITICAL INSTRUCTION: You MUST reply entirely in {target_lang_name} language.
+CRITICAL INSTRUCTION: You MUST reply entirely in {target_lang_name} language. 
+This is for a farmer who only understands {target_lang_name}. 
+If you provide any technical terms in English, you MUST provide the {target_lang_name} translation in brackets.
+DO NOT use English prose under any circumstances.
 
 Farmer's Profile:
 - Location: {location.get('name', 'Unknown')}
@@ -749,7 +815,7 @@ Respond in JSON format with these fields:
 - urgency: "low", "medium", "high", or "critical"
 Respond ONLY in valid JSON."""
             user_msg = "Analyze this plant image for diseases or health issues. Identify the plant and any problems."
-            response = await gemini_chat(system_prompt=sys_msg, user_prompt=user_msg, image_b64=image_b64)
+            response = await gemini_chat(sys_prompt=sys_msg, user_prompt=user_msg, image_b64=image_b64)
             
             clean = response.strip()
             if clean.startswith("```"):
@@ -896,8 +962,10 @@ async def get_recommendations(request: Request):
     prompt = prompts.get(rec_type, prompts["general"])
     try:
         from ai_helpers import gemini_chat
-        sys_msg = f"You are Kissan AI, an expert agricultural advisor. Provide practical, actionable advice. Be concise but thorough. CRITICAL INSTRUCTION: You MUST reply entirely in the {lang_name} language."
-        response = await gemini_chat(sys_msg, prompt)
+        sys_msg = f"You are Kissan AI, an expert agricultural advisor. Provide practical, actionable advice. Be concise but thorough. CRITICAL INSTRUCTION: You MUST reply entirely in the {lang_name} language. DO NOT use English except for specific chemical names if necessary, but even then, provide the {lang_name} script equivalent. Failure to use {lang_name} will make the advice useless to the farmer."
+        # Use search for pest and general advice to be more accurate
+        use_search = rec_type in ["pest", "general"]
+        response = await gemini_chat(sys_msg, prompt, use_search=use_search)
         return {"recommendation": response, "type": rec_type}
     except Exception as e:
         logger.error(f"Recommendation error: {e}")

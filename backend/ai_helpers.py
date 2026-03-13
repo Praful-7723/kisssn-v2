@@ -6,15 +6,14 @@ def get_sarvam_lang_code(code):
     if not code: return 'en-IN'
     return f"{code}-IN"
 
-async def gemini_chat(system_prompt: str, user_prompt: str, image_b64: str = None, audio_b64: str = None) -> str:
+async def gemini_chat(system_prompt: str, user_prompt: str, image_b64: str = None, audio_b64: str = None, use_search: bool = False) -> str:
     api_key = os.environ.get("GEMINI_API_KEY")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    # Use gemini-2.0-flash for better performance and search tool support
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     parts = []
-    print("URL REQUEST:", url)
+    
     if image_b64:
-        # Check if the base64 string already has a data URI prefix, like "data:image/jpeg;base64,"
         if image_b64.startswith("data:"):
-            # Format: data:image/jpeg;base64,iVBOR...
             mime_type = image_b64.split(";")[0].split(":")[1]
             b64_data = image_b64.split(",")[1]
             parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
@@ -34,6 +33,10 @@ async def gemini_chat(system_prompt: str, user_prompt: str, image_b64: str = Non
         "contents": [{"role": "user", "parts": parts}],
         "systemInstruction": {"role": "user", "parts": [{"text": system_prompt}]}
     }
+    
+    if use_search:
+        payload["tools"] = [{"googleSearchThumbnail": {}}] if "Thumbnail" in os.environ.get("GEMINI_SEARCH_TYPE", "") else [{"googleSearchRetrieval": {}}]
+
     async with httpx.AsyncClient() as client:
         res = await client.post(url, json=payload, timeout=60.0)
         data = res.json()
