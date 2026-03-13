@@ -896,6 +896,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=["http://localhost:3000", "http://localhost:3001", "https://tame-bikes-flow.loca.lt"],
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.loca\.lt",
     allow_methods=["*"],
     allow_headers=["*"],
 )
