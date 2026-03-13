@@ -90,17 +90,28 @@ export default function ChatPage() {
     try { await fetch(`${API}/chat/history`, { method: 'DELETE', credentials: 'include' }); setMessages([]); toast.success('Chat cleared'); } catch { }
   };
 
-  const [transcriptData, setTranscriptData] = useState('');
+  const lastSentTranscriptRef = useRef('');
+  const sessionTranscriptRef = useRef('');
 
   const toggleVoice = () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      if (recognitionRef.current) {
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop();
+      }
       setIsListening(false);
+      if (input.trim()) {
+        sendMessage(input.trim());
+      }
       return;
     }
+
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.error('Speech recognition not supported'); return;
+      toast.error('Speech recognition not supported');
+      return;
     }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
@@ -109,32 +120,52 @@ export default function ChatPage() {
     const langMap = { 'en': 'en-IN', 'hi': 'hi-IN', 'ta': 'ta-IN', 'te': 'te-IN', 'ml': 'ml-IN', 'mr': 'mr-IN' };
     recognition.lang = langMap[user?.language] || 'en-IN';
 
+    sessionTranscriptRef.current = '';
+    
     recognition.onresult = (e) => {
-      let finalTranscript = '';
       let interimTranscript = '';
-      for (let i = 0; i < e.results.length; ++i) {
+      let finalTranscript = '';
+
+      for (let i = e.resultIndex; i < e.results.length; ++i) {
+        const transcript = e.results[i][0].transcript;
         if (e.results[i].isFinal) {
-          finalTranscript += e.results[i][0].transcript;
+          finalTranscript += transcript;
         } else {
-          interimTranscript += e.results[i][0].transcript;
+          interimTranscript += transcript;
         }
       }
-      setInput(finalTranscript + interimTranscript);
+
+      const currentText = (sessionTranscriptRef.current + finalTranscript + interimTranscript).trim();
+      if (finalTranscript) {
+        sessionTranscriptRef.current += finalTranscript;
+      }
+      
+      setInput(currentText);
     };
 
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (e) => {
+      console.error('Speech recognition error:', e.error);
+      setIsListening(false);
+    };
+
     recognition.onend = () => {
       setIsListening(false);
-      setInput((prev) => {
-        if (prev && prev.trim()) {
-          sendMessage(prev.trim());
-        }
-        return prev;
-      });
+      // Wait a bit to see if we have final input to send
+      setTimeout(() => {
+        setInput(prev => {
+          if (prev && prev.trim() && prev !== lastSentTranscriptRef.current) {
+            sendMessage(prev.trim());
+            lastSentTranscriptRef.current = prev;
+          }
+          return prev;
+        });
+      }, 500);
     };
+
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
+    lastSentTranscriptRef.current = '';
   };
 
   const playNextChunk = () => {
