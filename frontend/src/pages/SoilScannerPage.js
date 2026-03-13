@@ -41,9 +41,19 @@ export default function SoilScannerPage() {
                 async (pos) => {
                     const { latitude, longitude } = pos.coords;
                     try {
+                        let locationName = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
+                        try {
+                            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                            if (geoRes.ok) {
+                                const geoData = await geoRes.json();
+                                const addr = geoData.address || {};
+                                locationName = addr.city || addr.town || addr.village || addr.county || locationName;
+                            }
+                        } catch { }
+
                         const res = await fetch(`${API}/user/farm`, {
                             method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-                            body: JSON.stringify({ location_lat: latitude, location_lon: longitude, location_name: `${latitude.toFixed(2)}, ${longitude.toFixed(2)}` })
+                            body: JSON.stringify({ location_lat: latitude, location_lon: longitude, location_name: locationName })
                         });
                         if (res.ok) {
                             const data = await res.json();

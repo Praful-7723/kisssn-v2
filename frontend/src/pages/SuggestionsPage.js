@@ -54,10 +54,11 @@ export default function SuggestionsPage() {
         const { latitude, longitude } = pos.coords;
         let locationName = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
         try {
-          const geoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`);
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           if (geoRes.ok) {
-            const d = await geoRes.json();
-            locationName = d.timezone?.split('/')[1]?.replace(/_/g, ' ') || locationName;
+            const geoData = await geoRes.json();
+            const addr = geoData.address || {};
+            locationName = addr.city || addr.town || addr.village || addr.county || locationName;
           }
         } catch { }
         try {
